@@ -171,13 +171,18 @@
     <!-- Modal para compartir -->
     <div id="share-modal" class="modal hidden">
         <div class="modal-content">
-            <h3>Compartir Libro</h3>
+            <h3>🎬 Compartir Tu Libro Mágico</h3>
+            <p>¡Comparte tu increíble historia con el mundo!</p>
             <div class="share-options">
+                <button class="share-option video-share" onclick="downloadBook(currentBook)">🎥 Descargar Video</button>
                 <button class="share-option" onclick="shareOnFacebook()">📘 Facebook</button>
                 <button class="share-option" onclick="shareOnTwitter()">🐦 Twitter</button>
                 <button class="share-option" onclick="shareOnWhatsApp()">💬 WhatsApp</button>
                 <button class="share-option" onclick="copyLink()">🔗 Copiar enlace</button>
             </div>
+            <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">
+                💡 Consejo: Descarga primero el video y luego súbelo a tus redes sociales favoritas
+            </p>
             <button class="modal-close" onclick="closeShareModal()">Cerrar</button>
         </div>
     </div>

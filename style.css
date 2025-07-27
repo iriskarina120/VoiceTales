@@ -839,6 +839,17 @@ body {
     background: #e9ecef;
 }
 
+.video-share {
+    background: #e74c3c;
+    color: white;
+    font-weight: bold;
+}
+
+.video-share:hover {
+    background: #c0392b;
+    color: white;
+}
+
 .modal-close {
     background: #6c757d;
     color: white;

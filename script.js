@@ -247,10 +247,21 @@ function createMascot() {
     
     // Mostrar mascota ocasionalmente durante la experiencia
     setInterval(() => {
-        if (!mascotVisible && Math.random() < 0.1) { // 10% probabilidad cada 30 segundos
-            showRandomEncouragement();
+        if (!mascotVisible && Math.random() < 0.15) { // 15% probabilidad cada 20 segundos
+            if (Math.random() < 0.3) {
+                showContextualTip();
+            } else {
+                showRandomEncouragement();
+            }
         }
-    }, 30000);
+    }, 20000);
+    
+    // Mascota aparece al cambiar de sección
+    setTimeout(() => {
+        if (currentSection === 'main-menu') {
+            showContextualTip();
+        }
+    }, 3000);
 }
 
 // Mostrar pantalla de bienvenida
@@ -308,17 +319,48 @@ function showMascot(message, duration = 4000) {
 
 // Mostrar mensajes aleatorios de ánimo
 function showRandomEncouragement() {
+    if (currentSection === 'book-editor' || currentSection === 'book-reader') return; // No interrumpir durante lectura/edición
+    
     const encouragements = [
         `¡Sigue así, ${userName}! Eres muy creativo.`,
         `¡Tus historias son increíbles, ${userName}!`,
         `¿Qué tal si agregamos más aventuras a tu libro?`,
         `¡Me encanta ver cómo creas, ${userName}!`,
         `¿Sabías que puedes grabar tu voz en cada página?`,
-        `¡Cada historia tuya es única y especial!`
+        `¡Cada historia tuya es única y especial!`,
+        `${userName}, ¿ya exploraste todas las categorías de plantillas?`,
+        `¡Recuerda que puedes subir tus propias imágenes!`,
+        `${userName}, tus cuentos podrían inspirar a otros niños.`,
+        `¿Qué tal si creas un libro sobre tus mascotas?`,
+        `¡La magia está en tu imaginación, ${userName}!`
     ];
     
     const randomMessage = encouragements[Math.floor(Math.random() * encouragements.length)];
-    showMascot(randomMessage, 5000);
+    playMagicSound();
+    showMascot(randomMessage, 6000);
+}
+
+// Mostrar consejos específicos según la sección
+function showContextualTip() {
+    let tip = '';
+    
+    switch(currentSection) {
+        case 'library':
+            tip = `${userName}, ¡hay muchas plantillas geniales aquí! Cada categoría tiene historias únicas.`;
+            break;
+        case 'my-books':
+            tip = `¡Qué biblioteca tan impresionante, ${userName}! ¿Cuál vas a leer primero?`;
+            break;
+        case 'book-creator':
+            tip = `${userName}, ¡este es mi lugar favorito! Aquí es donde nace la magia de las historias.`;
+            break;
+        default:
+            showRandomEncouragement();
+            return;
+    }
+    
+    playMagicSound();
+    showMascot(tip, 5000);
 }
 
 // Ocultar mascota
@@ -339,85 +381,133 @@ function initializeBackgroundMusic() {
     createBackgroundMusic();
 }
 
+// Variables para sonidos
+let backgroundMusicEnabled = true;
+let audioContext = null;
+let backgroundMusicPlaying = false;
+
 // Crear música de fondo sintética
 function createBackgroundMusic() {
     try {
         // Crear un audio sintético más agradable para niños
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        backgroundMusicPlaying = false;
         
-        // Función para crear notas musicales
-        function playNote(frequency, duration, startTime) {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(frequency, startTime);
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0, startTime);
-            gainNode.gain.linearRampToValueAtTime(0.05, startTime + 0.1);
-            gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-            
-            oscillator.start(startTime);
-            oscillator.stop(startTime + duration);
-        }
-        
-        // Melodía suave para niños (Twinkle Twinkle Little Star simplificada)
-        const melody = [
-            {note: 261.63, duration: 0.5}, // C
-            {note: 261.63, duration: 0.5}, // C
-            {note: 392.00, duration: 0.5}, // G
-            {note: 392.00, duration: 0.5}, // G
-            {note: 440.00, duration: 0.5}, // A
-            {note: 440.00, duration: 0.5}, // A
-            {note: 392.00, duration: 1.0}, // G
-            {note: 349.23, duration: 0.5}, // F
-            {note: 349.23, duration: 0.5}, // F
-            {note: 329.63, duration: 0.5}, // E
-            {note: 329.63, duration: 0.5}, // E
-            {note: 293.66, duration: 0.5}, // D
-            {note: 293.66, duration: 0.5}, // D
-            {note: 261.63, duration: 1.0}, // C
-        ];
-        
-        let currentTime = audioContext.currentTime;
-        let melodyIndex = 0;
-        
-        function playMelody() {
-            if (backgroundMusic && !backgroundMusic.paused) {
-                const currentNote = melody[melodyIndex];
-                playNote(currentNote.note, currentNote.duration, currentTime);
-                currentTime += currentNote.duration + 0.1;
-                melodyIndex = (melodyIndex + 1) % melody.length;
-                
-                if (melodyIndex === 0) {
-                    currentTime += 2; // Pausa entre repeticiones
-                }
-                
-                setTimeout(playMelody, (currentNote.duration + 0.1) * 1000);
-            }
-        }
-        
-        // Iniciar la melodía después de un pequeño delay
-        setTimeout(() => {
-            if (audioContext.state === 'suspended') {
-                audioContext.resume().then(() => {
-                    playMelody();
-                });
-            } else {
-                playMelody();
-            }
-        }, 1000);
+        console.log('🎵 Sistema de audio inicializado');
         
     } catch (error) {
         console.log('Audio sintético no disponible:', error);
-        // Fallback: crear silencio como placeholder
-        backgroundMusic = new Audio();
-        backgroundMusic.loop = true;
-        backgroundMusic.volume = 0;
+        audioContext = null;
     }
+}
+
+// Función para crear notas musicales
+function playNote(frequency, duration, startTime, volume = 0.03) {
+    if (!audioContext) return;
+    
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.1);
+    gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+    
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration);
+}
+
+// Reproducir música de fondo
+function startBackgroundMusic() {
+    if (!audioContext || backgroundMusicPlaying || !backgroundMusicEnabled) return;
+    
+    backgroundMusicPlaying = true;
+    
+    // Melodía suave para niños (Twinkle Twinkle Little Star simplificada)
+    const melody = [
+        {note: 261.63, duration: 0.5}, // C
+        {note: 261.63, duration: 0.5}, // C
+        {note: 392.00, duration: 0.5}, // G
+        {note: 392.00, duration: 0.5}, // G
+        {note: 440.00, duration: 0.5}, // A
+        {note: 440.00, duration: 0.5}, // A
+        {note: 392.00, duration: 1.0}, // G
+        {note: 349.23, duration: 0.5}, // F
+        {note: 349.23, duration: 0.5}, // F
+        {note: 329.63, duration: 0.5}, // E
+        {note: 329.63, duration: 0.5}, // E
+        {note: 293.66, duration: 0.5}, // D
+        {note: 293.66, duration: 0.5}, // D
+        {note: 261.63, duration: 1.0}, // C
+    ];
+    
+    let currentTime = audioContext.currentTime;
+    let melodyIndex = 0;
+    
+    function playMelody() {
+        if (backgroundMusicPlaying && backgroundMusicEnabled && audioContext) {
+            const currentNote = melody[melodyIndex];
+            playNote(currentNote.note, currentNote.duration, currentTime, 0.02);
+            currentTime += currentNote.duration + 0.1;
+            melodyIndex = (melodyIndex + 1) % melody.length;
+            
+            if (melodyIndex === 0) {
+                currentTime += 3; // Pausa entre repeticiones
+            }
+            
+            setTimeout(playMelody, (currentNote.duration + 0.1) * 1000);
+        }
+    }
+    
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+            playMelody();
+        });
+    } else {
+        playMelody();
+    }
+}
+
+// Detener música de fondo
+function stopBackgroundMusic() {
+    backgroundMusicPlaying = false;
+}
+
+// Sonidos de interacción
+function playClickSound() {
+    if (!audioContext) return;
+    const currentTime = audioContext.currentTime;
+    playNote(523.25, 0.1, currentTime, 0.1); // C5
+}
+
+function playSuccessSound() {
+    if (!audioContext) return;
+    const currentTime = audioContext.currentTime;
+    playNote(523.25, 0.2, currentTime, 0.08); // C5
+    playNote(659.25, 0.2, currentTime + 0.1, 0.08); // E5
+    playNote(783.99, 0.3, currentTime + 0.2, 0.08); // G5
+}
+
+function playErrorSound() {
+    if (!audioContext) return;
+    const currentTime = audioContext.currentTime;
+    playNote(220.00, 0.3, currentTime, 0.1); // A3
+    playNote(196.00, 0.3, currentTime + 0.15, 0.1); // G3
+}
+
+function playMagicSound() {
+    if (!audioContext) return;
+    const currentTime = audioContext.currentTime;
+    // Secuencia mágica ascendente
+    const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
+    notes.forEach((note, index) => {
+        playNote(note, 0.15, currentTime + (index * 0.08), 0.06);
+    });
 }
 
 // Configurar event listeners
@@ -461,27 +551,47 @@ function showMainMenu() {
     hideAllSections();
     document.getElementById('main-menu').classList.remove('hidden');
     currentSection = 'main-menu';
+    playClickSound();
+    // Reanudar música de fondo si está habilitada
+    if (backgroundMusicEnabled) {
+        setTimeout(() => startBackgroundMusic(), 500);
+    }
 }
 
 function showLibrary() {
     hideAllSections();
     document.getElementById('library-section').classList.remove('hidden');
     currentSection = 'library';
+    playClickSound();
     displayTemplates();
+    // Mantener música de fondo
+    if (backgroundMusicEnabled && !backgroundMusicPlaying) {
+        setTimeout(() => startBackgroundMusic(), 300);
+    }
 }
 
 function showMyBooks() {
     hideAllSections();
     document.getElementById('my-books-section').classList.remove('hidden');
     currentSection = 'my-books';
+    playClickSound();
     displayUserBooks();
+    // Mantener música de fondo
+    if (backgroundMusicEnabled && !backgroundMusicPlaying) {
+        setTimeout(() => startBackgroundMusic(), 300);
+    }
 }
 
 function showBookCreator() {
     hideAllSections();
     document.getElementById('book-creator').classList.remove('hidden');
     currentSection = 'book-creator';
+    playClickSound();
     initializeCreator();
+    // Mantener música de fondo
+    if (backgroundMusicEnabled && !backgroundMusicPlaying) {
+        setTimeout(() => startBackgroundMusic(), 300);
+    }
 }
 
 function showBookEditor(book) {
@@ -491,6 +601,9 @@ function showBookEditor(book) {
     currentBook = book;
     currentPage = 0;
     document.getElementById('editor-title').textContent = `Editando: ${book.title}`;
+    playClickSound();
+    // Detener música de fondo en editor
+    stopBackgroundMusic();
     displayCurrentPage();
 }
 
@@ -503,6 +616,9 @@ function showBookReader(book) {
     isReadingBook = true;
     autoPlayMode = true;
     document.getElementById('reader-title').textContent = book.title;
+    playClickSound();
+    // Detener música de fondo en lector
+    stopBackgroundMusic();
     displayReaderPages();
 }
 
@@ -709,6 +825,7 @@ function updateAudioControls() {
 
 function previousPage() {
     if (currentPage > 0) {
+        playClickSound();
         // Detener grabación automáticamente si está activa
         if (isRecording) {
             stopRecordingAutomatically();
@@ -726,6 +843,7 @@ function previousPage() {
 
 function nextPage() {
     if (currentPage < currentBook.pages.length - 1) {
+        playClickSound();
         // Detener grabación automáticamente si está activa
         if (isRecording) {
             stopRecordingAutomatically();
@@ -780,6 +898,7 @@ async function toggleRecording() {
             isRecording = true;
             recordBtn.textContent = '⏹️ Parar';
             recordBtn.classList.add('recording');
+            playMagicSound();
             
         } catch (error) {
             console.error('Error al acceder al micrófono:', error);
@@ -837,6 +956,7 @@ function saveCurrentBook() {
     }
     
     saveUserData();
+    playSuccessSound();
     showMascot(`¡Felicidades ${userName}! Tu libro "${currentBook.title}" ha sido guardado exitosamente. ¡Eres un gran escritor!`, 5000);
 }
 
@@ -1175,11 +1295,13 @@ function createNewBook() {
     const description = document.getElementById('book-description').value.trim();
     
     if (!title) {
+        playErrorSound();
         showMascot(`¡${userName}! No olvides ponerle un título a tu libro.`);
         return;
     }
     
     if (!window.tempBookPages || window.tempBookPages.length === 0) {
+        playErrorSound();
         showMascot(`¡${userName}! Necesitas agregar al menos una imagen de fondo para comenzar.`);
         return;
     }
@@ -1193,6 +1315,7 @@ function createNewBook() {
     };
     
     window.tempBookPages = [];
+    playSuccessSound();
     showMascot(`¡Felicidades ${userName}! Has creado "${title}". ¡Eres un verdadero escritor mágico! Ahora puedes agregar texto y audio a cada página.`, 6000);
     showBookEditor(newBook);
 }
@@ -1207,38 +1330,187 @@ function deleteBook(index) {
     }
 }
 
-// Función para descargar libro
-function downloadBook(book) {
+// Función para crear video MP4 del libro
+async function createBookVideo(book) {
     try {
-        const bookData = {
-            title: book.title,
-            description: book.description,
-            pages: book.pages.map(page => ({
-                text: page.text || '',
-                background: page.background,
-                hasAudio: !!page.audio
-            })),
-            createdAt: new Date().toISOString(),
-            version: '1.0'
+        showMascot(`${userName}, estoy preparando tu video mágico... ¡Esto puede tomar unos momentos!`, 3000);
+        playMagicSound();
+        
+        // Crear canvas para el video
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1920;
+        canvas.height = 1080;
+        
+        // Configurar MediaRecorder para capturar canvas
+        const stream = canvas.captureStream(30); // 30 FPS
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Crear pista de audio para el video
+        const audioDestination = audioContext.createMediaStreamDestination();
+        stream.addTrack(audioDestination.stream.getAudioTracks()[0]);
+        
+        const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9,opus'
+        });
+        
+        const chunks = [];
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
         };
         
-        const dataStr = JSON.stringify(bookData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            downloadVideoBlob(blob, book.title);
+        };
         
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}_AudioTale.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        // Comenzar grabación
+        mediaRecorder.start();
         
-        alert('¡Libro descargado correctamente!');
+        // Función para renderizar cada página
+        async function renderPage(pageIndex) {
+            return new Promise((resolve) => {
+                const page = book.pages[pageIndex];
+                
+                // Limpiar canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Cargar imagen de fondo
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    // Dibujar fondo
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    // Agregar overlay semitransparente
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Agregar título del libro en la primera página
+                    if (pageIndex === 0) {
+                        ctx.font = 'bold 80px "Comic Sans MS", cursive';
+                        ctx.fillStyle = '#333';
+                        ctx.textAlign = 'center';
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 4;
+                        ctx.strokeText(book.title, canvas.width / 2, 200);
+                        ctx.fillText(book.title, canvas.width / 2, 200);
+                    }
+                    
+                    // Agregar texto de la página
+                    if (page.text) {
+                        ctx.font = 'bold 48px "Comic Sans MS", cursive';
+                        ctx.fillStyle = '#333';
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 3;
+                        ctx.textAlign = 'center';
+                        
+                        const words = page.text.split(' ');
+                        const lines = [];
+                        let currentLine = '';
+                        
+                        words.forEach(word => {
+                            const testLine = currentLine + word + ' ';
+                            const metrics = ctx.measureText(testLine);
+                            if (metrics.width > canvas.width - 200 && currentLine !== '') {
+                                lines.push(currentLine);
+                                currentLine = word + ' ';
+                            } else {
+                                currentLine = testLine;
+                            }
+                        });
+                        lines.push(currentLine);
+                        
+                        const startY = canvas.height - 300;
+                        lines.forEach((line, index) => {
+                            const y = startY + (index * 60);
+                            ctx.strokeText(line, canvas.width / 2, y);
+                            ctx.fillText(line, canvas.width / 2, y);
+                        });
+                    }
+                    
+                    // Agregar número de página
+                    ctx.font = 'bold 36px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`Página ${pageIndex + 1}`, canvas.width - 50, canvas.height - 50);
+                    
+                    // Agregar logo de AudioTale
+                    ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('🎧 AudioTale', 50, canvas.height - 50);
+                    
+                    resolve();
+                };
+                
+                img.onerror = () => {
+                    // Si no se puede cargar la imagen, usar color sólido
+                    ctx.fillStyle = '#667eea';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    resolve();
+                };
+                
+                img.src = page.background;
+            });
+        }
+        
+        // Renderizar cada página por 3 segundos
+        let currentPageIndex = 0;
+        
+        async function renderNextPage() {
+            if (currentPageIndex < book.pages.length) {
+                await renderPage(currentPageIndex);
+                
+                // Reproducir audio de la página si existe
+                if (book.pages[currentPageIndex].audio) {
+                    const audio = new Audio(book.pages[currentPageIndex].audio);
+                    const audioSource = audioContext.createMediaElementSource(audio);
+                    audioSource.connect(audioDestination);
+                    audio.play().catch(e => console.log('Error reproduciendo audio:', e));
+                }
+                
+                currentPageIndex++;
+                setTimeout(renderNextPage, 4000); // 4 segundos por página
+            } else {
+                // Finalizar grabación
+                setTimeout(() => {
+                    mediaRecorder.stop();
+                    audioContext.close();
+                    playSuccessSound();
+                    showMascot(`¡Increíble ${userName}! Tu video está listo para descargar y compartir.`, 4000);
+                }, 1000);
+            }
+        }
+        
+        // Comenzar renderizado
+        renderNextPage();
+        
     } catch (error) {
-        console.error('Error al descargar libro:', error);
-        alert('Error al descargar el libro. Inténtalo de nuevo.');
+        console.error('Error creando video:', error);
+        playErrorSound();
+        showMascot(`${userName}, hubo un problema creando el video. Intenta de nuevo.`);
     }
+}
+
+// Función para descargar el blob de video
+function downloadVideoBlob(blob, title) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_AudioTale.webm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Función para descargar libro (ahora genera video)
+function downloadBook(book) {
+    playClickSound();
+    createBookVideo(book);
 }
 
 // Funciones de compartir
@@ -1251,22 +1523,29 @@ function closeShareModal() {
 }
 
 function shareOnFacebook() {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬`;
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'width=600,height=400');
+    showMascot(`${userName}, ¡genial! Compartir tus historias inspire a otros niños.`);
     closeShareModal();
 }
 
 function shareOnTwitter() {
-    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚`;
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Descarga el video y compártelo con tus amigos.`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
     window.open(url, '_blank', 'width=600,height=400');
+    showMascot(`¡Perfecto ${userName}! Twitter es genial para compartir tu creatividad.`);
     closeShareModal();
 }
 
 function shareOnWhatsApp() {
-    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚 ${window.location.href}`;
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Primero descarga el video desde la app: ${window.location.href}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+    showMascot(`¡Excelente ${userName}! Compartir con la familia es lo mejor.`);
     closeShareModal();
 }
 
@@ -1420,16 +1699,22 @@ document.addEventListener('keydown', function(e) {
 function toggleBackgroundMusic() {
     const musicBtn = document.getElementById('music-toggle');
     
-    if (backgroundMusic) {
-        if (backgroundMusic.paused) {
-            backgroundMusic.play().catch(e => console.log('Error al reproducir música'));
-            musicBtn.textContent = '🎵';
-            musicBtn.title = 'Pausar música';
-        } else {
-            backgroundMusic.pause();
-            musicBtn.textContent = '🔇';
-            musicBtn.title = 'Reproducir música';
+    backgroundMusicEnabled = !backgroundMusicEnabled;
+    
+    if (backgroundMusicEnabled) {
+        musicBtn.textContent = '🎵';
+        musicBtn.title = 'Pausar música';
+        // Solo iniciar música si no estamos en editor/lector de libros
+        if (currentSection === 'main-menu' || currentSection === 'library' || 
+            currentSection === 'my-books' || currentSection === 'book-creator') {
+            startBackgroundMusic();
         }
+        playClickSound();
+    } else {
+        musicBtn.textContent = '🔇';
+        musicBtn.title = 'Reproducir música';
+        stopBackgroundMusic();
+        playClickSound();
     }
 }
 
