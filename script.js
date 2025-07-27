@@ -18,6 +18,9 @@ let isReadingBook = false; // Estado de lectura
 let audioQueue = []; // Cola de audios para reproducir
 let currentAudioIndex = 0; // Índice del audio actual en la cola
 let userImages = []; // Imágenes subidas por el usuario
+let userName = ''; // Nombre del usuario
+let backgroundMusic = null; // Música de fondo
+let mascotVisible = false; // Estado de visibilidad de la mascota
 
 // Galería de imágenes predefinidas
 const IMAGE_GALLERY = {
@@ -197,7 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Simular carga de la aplicación
     setTimeout(() => {
         hideLoadingScreen();
-        showMainMenu();
+        initializeBackgroundMusic();
+        showWelcomeScreen();
         initializeApp();
     }, 2000);
 });
@@ -218,7 +222,126 @@ function initializeApp() {
         templates.push(...category.templates);
     });
     
+    // Crear elemento de mascota
+    createMascot();
+    
     console.log('✅ Aplicación inicializada correctamente');
+}
+
+// Crear mascota animada
+function createMascot() {
+    const mascot = document.createElement('div');
+    mascot.id = 'mascot';
+    mascot.className = 'mascot hidden';
+    mascot.innerHTML = `
+        <div class="mascot-character">🧙‍♂️</div>
+        <div class="mascot-speech-bubble">
+            <p id="mascot-text">¡Hola!</p>
+            <div class="speech-bubble-arrow"></div>
+        </div>
+    `;
+    document.body.appendChild(mascot);
+    
+    // Agregar evento de click para ocultar
+    mascot.addEventListener('click', hideMascot);
+}
+
+// Mostrar pantalla de bienvenida
+function showWelcomeScreen() {
+    const welcomeScreen = document.createElement('div');
+    welcomeScreen.id = 'welcome-screen';
+    welcomeScreen.className = 'welcome-screen';
+    welcomeScreen.innerHTML = `
+        <div class="welcome-content">
+            <div class="mascot-logo">🧙‍♂️</div>
+            <h1>¡Bienvenido a AudioTale!</h1>
+            <p>¡Hola! Soy Mago Cuento, tu guía mágico en este mundo de historias.</p>
+            <p>¿Cómo te llamas?</p>
+            <input type="text" id="user-name-input" placeholder="Escribe tu nombre aquí..." maxlength="20">
+            <button id="start-adventure-btn" onclick="startAdventure()">¡Comenzar la Aventura!</button>
+        </div>
+    `;
+    document.body.appendChild(welcomeScreen);
+}
+
+// Comenzar aventura
+function startAdventure() {
+    const nameInput = document.getElementById('user-name-input');
+    userName = nameInput.value.trim() || 'Aventurero';
+    
+    const welcomeScreen = document.getElementById('welcome-screen');
+    welcomeScreen.classList.add('fade-out');
+    
+    setTimeout(() => {
+        document.body.removeChild(welcomeScreen);
+        showMainMenu();
+        showMascot(`¡Perfecto, ${userName}! ¡Estás listo para crear historias increíbles!`);
+    }, 500);
+}
+
+// Mostrar mascota con mensaje
+function showMascot(message, duration = 4000) {
+    const mascot = document.getElementById('mascot');
+    const mascotText = document.getElementById('mascot-text');
+    
+    mascotText.textContent = message;
+    mascot.classList.remove('hidden');
+    mascotVisible = true;
+    
+    setTimeout(() => {
+        hideMascot();
+    }, duration);
+}
+
+// Ocultar mascota
+function hideMascot() {
+    const mascot = document.getElementById('mascot');
+    mascot.classList.add('hidden');
+    mascotVisible = false;
+}
+
+// Inicializar música de fondo
+function initializeBackgroundMusic() {
+    backgroundMusic = new Audio();
+    backgroundMusic.src = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjIwLjEwMAAAAAAAAAAAAAAA'; // Placeholder
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.3;
+    
+    // Crear música sintética simple
+    createBackgroundMusic();
+}
+
+// Crear música de fondo sintética
+function createBackgroundMusic() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        
+        oscillator.type = 'sine';
+        
+        // Crear una melodía suave y relajante
+        const notes = [220, 246.94, 261.63, 293.66, 329.63];
+        let noteIndex = 0;
+        
+        setInterval(() => {
+            if (backgroundMusic && !backgroundMusic.paused) {
+                oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
+                noteIndex = (noteIndex + 1) % notes.length;
+            }
+        }, 2000);
+        
+        // Conectar con el elemento de audio
+        backgroundMusic.play().catch(e => console.log('Música automática bloqueada'));
+    } catch (error) {
+        console.log('Audio sintético no disponible');
+    }
 }
 
 // Configurar event listeners
@@ -510,6 +633,10 @@ function updateAudioControls() {
 
 function previousPage() {
     if (currentPage > 0) {
+        // Detener grabación automáticamente si está activa
+        if (isRecording) {
+            stopRecordingAutomatically();
+        }
         currentPage--;
         displayCurrentPage();
     }
@@ -517,8 +644,25 @@ function previousPage() {
 
 function nextPage() {
     if (currentPage < currentBook.pages.length - 1) {
+        // Detener grabación automáticamente si está activa
+        if (isRecording) {
+            stopRecordingAutomatically();
+        }
         currentPage++;
         displayCurrentPage();
+    }
+}
+
+// Detener grabación automáticamente al cambiar de página
+function stopRecordingAutomatically() {
+    if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
+        const recordBtn = document.getElementById('record-btn');
+        recordBtn.textContent = '🎤 Grabar';
+        recordBtn.classList.remove('recording');
+        
+        showMascot(`¡${userName}! He guardado tu grabación automáticamente al cambiar de página.`);
     }
 }
 
@@ -583,10 +727,15 @@ function deletePageAudio() {
 function saveCurrentBook() {
     if (!currentBook) return;
     
+    // Detener grabación si está activa
+    if (isRecording) {
+        stopRecordingAutomatically();
+    }
+    
     // Verificar que el libro tenga contenido
     const hasContent = currentBook.pages.some(page => page.text || page.audio);
     if (!hasContent) {
-        alert('Agrega texto o audio a al menos una página antes de guardar.');
+        showMascot(`¡${userName}! Necesitas agregar texto o audio a al menos una página antes de guardar.`);
         return;
     }
     
@@ -600,7 +749,7 @@ function saveCurrentBook() {
     }
     
     saveUserData();
-    alert('¡Libro guardado exitosamente!');
+    showMascot(`¡Felicidades ${userName}! Tu libro "${currentBook.title}" ha sido guardado exitosamente. ¡Eres un gran escritor!`, 5000);
 }
 
 // Gestión del lector
@@ -938,12 +1087,12 @@ function createNewBook() {
     const description = document.getElementById('book-description').value.trim();
     
     if (!title) {
-        alert('Por favor ingresa un título para el libro.');
+        showMascot(`¡${userName}! No olvides ponerle un título a tu libro.`);
         return;
     }
     
     if (!window.tempBookPages || window.tempBookPages.length === 0) {
-        alert('Por favor agrega al menos una imagen de fondo.');
+        showMascot(`¡${userName}! Necesitas agregar al menos una imagen de fondo para comenzar.`);
         return;
     }
     
@@ -956,6 +1105,7 @@ function createNewBook() {
     };
     
     window.tempBookPages = [];
+    showMascot(`¡Excelente ${userName}! Ahora puedes empezar a escribir tu historia en "${title}".`);
     showBookEditor(newBook);
 }
 
@@ -1176,6 +1326,57 @@ document.addEventListener('keydown', function(e) {
             toggleAutoPlay();
         }
     }
+});
+
+// Controlar música de fondo
+function toggleBackgroundMusic() {
+    const musicBtn = document.getElementById('music-toggle');
+    
+    if (backgroundMusic) {
+        if (backgroundMusic.paused) {
+            backgroundMusic.play().catch(e => console.log('Error al reproducir música'));
+            musicBtn.textContent = '🎵';
+            musicBtn.title = 'Pausar música';
+        } else {
+            backgroundMusic.pause();
+            musicBtn.textContent = '🔇';
+            musicBtn.title = 'Reproducir música';
+        }
+    }
+}
+
+// Hacer la app descargable como PWA
+function makeAppDownloadable() {
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Mostrar botón de instalación personalizado
+        const installBtn = document.createElement('button');
+        installBtn.id = 'install-btn';
+        installBtn.className = 'install-btn';
+        installBtn.innerHTML = '📱 Instalar App';
+        installBtn.onclick = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showMascot(`¡Genial ${userName}! Ahora puedes usar AudioTale desde tu dispositivo.`);
+                }
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            }
+        };
+        
+        document.body.appendChild(installBtn);
+    });
+}
+
+// Inicializar PWA al cargar la página
+window.addEventListener('load', () => {
+    makeAppDownloadable();
 });
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
