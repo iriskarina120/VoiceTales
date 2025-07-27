@@ -1,16 +1,166 @@
+
 <!DOCTYPE html>
-<html>
-
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioTale - Cuentos Interactivos</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4a90e2">
 </head>
-
 <body>
-  Hello world
-  <script src="script.js"></script>
-</body>
+    <!-- Pantalla de carga -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <h1>🎧 AudioTale</h1>
+            <div class="spinner"></div>
+            <p>Cargando tu biblioteca mágica...</p>
+        </div>
+    </div>
 
+    <!-- Menú principal -->
+    <div id="main-menu" class="main-menu hidden">
+        <header class="app-header">
+            <h1>🎧 AudioTale</h1>
+            <p>Crea y disfruta cuentos mágicos</p>
+        </header>
+
+        <div class="menu-options">
+            <button class="menu-btn" id="library-btn">
+                <span class="btn-icon">📚</span>
+                <span class="btn-text">Biblioteca de Plantillas</span>
+            </button>
+            <button class="menu-btn" id="my-books-btn">
+                <span class="btn-icon">📖</span>
+                <span class="btn-text">Mis Libros</span>
+            </button>
+            <button class="menu-btn" id="create-btn">
+                <span class="btn-icon">✏️</span>
+                <span class="btn-text">Crear Libro</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Biblioteca de plantillas -->
+    <div id="library-section" class="section hidden">
+        <header class="section-header">
+            <button class="back-btn" onclick="showMainMenu()">← Volver</button>
+            <h2>Biblioteca de Plantillas</h2>
+        </header>
+        <div class="books-grid" id="templates-grid"></div>
+    </div>
+
+    <!-- Mis libros -->
+    <div id="my-books-section" class="section hidden">
+        <header class="section-header">
+            <button class="back-btn" onclick="showMainMenu()">← Volver</button>
+            <h2>Mis Libros</h2>
+        </header>
+        <div class="books-grid" id="my-books-grid"></div>
+    </div>
+
+    <!-- Editor de libros -->
+    <div id="book-editor" class="section hidden">
+        <header class="editor-header">
+            <button class="back-btn" id="editor-back-btn">← Volver</button>
+            <h2 id="editor-title">Editando Libro</h2>
+            <button class="save-btn" id="save-book-btn">💾 Guardar</button>
+        </header>
+        <div class="editor-content">
+            <div class="page-container">
+                <div class="page" id="current-page">
+                    <div class="page-background"></div>
+                    <div class="page-content">
+                        <textarea class="text-input" placeholder="Escribe tu historia aquí..."></textarea>
+                        <div class="audio-controls">
+                            <button class="record-btn" id="record-btn">🎤 Grabar</button>
+                            <button class="play-btn hidden" id="play-btn">▶️ Reproducir</button>
+                            <button class="delete-audio-btn hidden" id="delete-audio-btn">🗑️ Eliminar Audio</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-navigation">
+                <button class="nav-btn" id="prev-page-btn">← Anterior</button>
+                <span class="page-counter" id="page-counter">Página 1 de 10</span>
+                <button class="nav-btn" id="next-page-btn">Siguiente →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lector de libros -->
+    <div id="book-reader" class="section hidden">
+        <header class="reader-header">
+            <button class="back-btn" id="reader-back-btn">← Volver</button>
+            <h2 id="reader-title">Leyendo Libro</h2>
+            <button class="share-btn" id="share-btn">📤 Compartir</button>
+        </header>
+        <div class="reader-content">
+            <div class="book-container">
+                <div class="book" id="book-display">
+                    <div class="page-left" id="page-left">
+                        <div class="page-background-left"></div>
+                        <div class="page-text-left"></div>
+                    </div>
+                    <div class="page-right" id="page-right">
+                        <div class="page-background-right"></div>
+                        <div class="page-text-right"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="reader-controls">
+                <button class="control-btn" id="reader-prev-btn">⏮️</button>
+                <button class="control-btn" id="auto-play-btn">⏯️</button>
+                <button class="control-btn" id="reader-next-btn">⏭️</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="reading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Creador de libros -->
+    <div id="book-creator" class="section hidden">
+        <header class="section-header">
+            <button class="back-btn" onclick="showMainMenu()">← Volver</button>
+            <h2>Crear Nuevo Libro</h2>
+        </header>
+        <div class="creator-content">
+            <div class="book-info">
+                <input type="text" id="book-title-input" placeholder="Título del libro" maxlength="50">
+                <textarea id="book-description" placeholder="Descripción del libro"></textarea>
+            </div>
+            <div class="pages-creator">
+                <h3>Páginas del libro</h3>
+                <div class="page-creator" id="page-creator">
+                    <!-- Las páginas se generarán dinámicamente -->
+                </div>
+                <div class="creator-actions">
+                    <button class="action-btn" id="add-page-btn">➕ Agregar Página</button>
+                    <button class="action-btn" id="create-book-btn">📚 Crear Libro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para compartir -->
+    <div id="share-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Compartir Libro</h3>
+            <div class="share-options">
+                <button class="share-option" onclick="shareOnFacebook()">📘 Facebook</button>
+                <button class="share-option" onclick="shareOnTwitter()">🐦 Twitter</button>
+                <button class="share-option" onclick="shareOnWhatsApp()">💬 WhatsApp</button>
+                <button class="share-option" onclick="copyLink()">🔗 Copiar enlace</button>
+            </div>
+            <button class="modal-close" onclick="closeShareModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Audio element para reproducción -->
+    <audio id="audio-player" style="display: none;"></audio>
+
+    <script src="script.js"></script>
+</body>
 </html>
