@@ -255,20 +255,26 @@ function createMascot() {
 
 // Mostrar pantalla de bienvenida
 function showWelcomeScreen() {
-    const welcomeScreen = document.createElement('div');
-    welcomeScreen.id = 'welcome-screen';
-    welcomeScreen.className = 'welcome-screen';
-    welcomeScreen.innerHTML = `
-        <div class="welcome-content">
-            <div class="mascot-logo">🧙‍♂️</div>
-            <h1>¡Bienvenido a AudioTale!</h1>
-            <p>¡Hola! Soy Mago Cuento, tu guía mágico en este mundo de historias.</p>
-            <p>¿Cómo te llamas?</p>
-            <input type="text" id="user-name-input" placeholder="Escribe tu nombre aquí..." maxlength="20">
-            <button id="start-adventure-btn" onclick="startAdventure()">¡Comenzar la Aventura!</button>
-        </div>
-    `;
-    document.body.appendChild(welcomeScreen);
+    const welcomeScreen = document.getElementById('welcome-screen');
+    if (welcomeScreen) {
+        welcomeScreen.classList.remove('hidden');
+    } else {
+        // Crear pantalla de bienvenida si no existe
+        const newWelcomeScreen = document.createElement('div');
+        newWelcomeScreen.id = 'welcome-screen';
+        newWelcomeScreen.className = 'welcome-screen';
+        newWelcomeScreen.innerHTML = `
+            <div class="welcome-content">
+                <div class="mascot-logo">🧙‍♂️</div>
+                <h1>¡Bienvenido a AudioTale!</h1>
+                <p>¡Hola! Soy Mago Cuento, tu guía mágico en este mundo de historias.</p>
+                <p>¿Cómo te llamas?</p>
+                <input type="text" id="user-name-input" placeholder="Escribe tu nombre aquí..." maxlength="20">
+                <button id="start-adventure-btn" onclick="startAdventure()">¡Comenzar la Aventura!</button>
+            </div>
+        `;
+        document.body.appendChild(newWelcomeScreen);
+    }
 }
 
 // Comenzar aventura
@@ -1460,5 +1466,12 @@ function makeAppDownloadable() {
 window.addEventListener('load', () => {
     makeAppDownloadable();
 });
+
+// Forzar actualización de caché en desarrollo
+if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
+    // Agregar timestamp para evitar caché en desarrollo
+    const timestamp = new Date().getTime();
+    console.log('🔄 Forzando actualización de caché - Timestamp:', timestamp);
+}
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
