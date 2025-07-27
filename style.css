@@ -922,6 +922,44 @@ body {
     .btn-icon {
         font-size: 1.5rem;
     }
+    
+    .books-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.8rem;
+        padding: 0.8rem;
+    }
+    
+    .user-book-card {
+        min-height: 320px;
+    }
+    
+    .book-actions {
+        gap: 0.3rem;
+        padding: 0 0.3rem;
+    }
+    
+    .action-btn {
+        font-size: 0.65rem;
+        padding: 0.4rem 0.2rem;
+        min-height: 28px;
+    }
+    
+    .mascot {
+        bottom: 80px;
+        right: 10px;
+    }
+    
+    .mascot-character {
+        width: 60px;
+        height: 60px;
+        font-size: 3rem;
+    }
+    
+    .mascot-speech-bubble {
+        max-width: 200px;
+        padding: 0.8rem;
+        bottom: 70px;
+    }
 }
 
 /* Animaciones adicionales */
@@ -1106,8 +1144,10 @@ body {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-5px) rotate(1deg); }
+    50% { transform: translateY(-10px) rotate(0deg); }
+    75% { transform: translateY(-5px) rotate(-1deg); }
 }
 
 @keyframes bubbleAppear {
@@ -1164,25 +1204,31 @@ body {
 
 /* Corrección de botones desbordados en tarjetas de libros */
 .book-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
     margin-top: 1rem;
+    padding: 0 0.5rem;
 }
 
 .action-btn {
     background: #4a90e2;
     color: white;
     border: none;
-    padding: 0.6rem;
-    border-radius: 8px;
+    padding: 0.5rem 0.3rem;
+    border-radius: 6px;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: background 0.3s ease;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: center;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Botones específicos con colores únicos */
@@ -1221,17 +1267,43 @@ body {
 /* Mejorar diseño responsive de tarjetas */
 .user-book-card {
     position: relative;
-    min-height: 350px;
+    min-height: 380px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .user-book-card .book-cover {
     flex: 1;
-    min-height: 200px;
+    min-height: 180px;
+    cursor: pointer;
 }
 
 .user-book-card .book-info {
     flex: 0 0 auto;
-    padding: 1rem;
+    padding: 0.8rem;
+    background: rgba(255,255,255,0.95);
+}
+
+.user-book-card .book-title {
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+    line-height: 1.2;
+    height: 2.4rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.user-book-card .book-description {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.3;
+    height: 2.6rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 0.5rem;
 }

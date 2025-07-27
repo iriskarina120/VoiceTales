@@ -228,7 +228,7 @@ function initializeApp() {
     console.log('✅ Aplicación inicializada correctamente');
 }
 
-// Crear mascota animada
+// Crear mascota animada (Mago Cuento)
 function createMascot() {
     const mascot = document.createElement('div');
     mascot.id = 'mascot';
@@ -236,7 +236,7 @@ function createMascot() {
     mascot.innerHTML = `
         <div class="mascot-character">🧙‍♂️</div>
         <div class="mascot-speech-bubble">
-            <p id="mascot-text">¡Hola!</p>
+            <p id="mascot-text">¡Hola! Soy Mago Cuento</p>
             <div class="speech-bubble-arrow"></div>
         </div>
     `;
@@ -244,6 +244,13 @@ function createMascot() {
     
     // Agregar evento de click para ocultar
     mascot.addEventListener('click', hideMascot);
+    
+    // Mostrar mascota ocasionalmente durante la experiencia
+    setInterval(() => {
+        if (!mascotVisible && Math.random() < 0.1) { // 10% probabilidad cada 30 segundos
+            showRandomEncouragement();
+        }
+    }, 30000);
 }
 
 // Mostrar pantalla de bienvenida
@@ -293,6 +300,21 @@ function showMascot(message, duration = 4000) {
     }, duration);
 }
 
+// Mostrar mensajes aleatorios de ánimo
+function showRandomEncouragement() {
+    const encouragements = [
+        `¡Sigue así, ${userName}! Eres muy creativo.`,
+        `¡Tus historias son increíbles, ${userName}!`,
+        `¿Qué tal si agregamos más aventuras a tu libro?`,
+        `¡Me encanta ver cómo creas, ${userName}!`,
+        `¿Sabías que puedes grabar tu voz en cada página?`,
+        `¡Cada historia tuya es única y especial!`
+    ];
+    
+    const randomMessage = encouragements[Math.floor(Math.random() * encouragements.length)];
+    showMascot(randomMessage, 5000);
+}
+
 // Ocultar mascota
 function hideMascot() {
     const mascot = document.getElementById('mascot');
@@ -314,33 +336,81 @@ function initializeBackgroundMusic() {
 // Crear música de fondo sintética
 function createBackgroundMusic() {
     try {
+        // Crear un audio sintético más agradable para niños
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
         
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        // Función para crear notas musicales
+        function playNote(frequency, duration, startTime) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, startTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(0.05, startTime + 0.1);
+            gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+            
+            oscillator.start(startTime);
+            oscillator.stop(startTime + duration);
+        }
         
-        oscillator.frequency.setValueAtTime(220, audioContext.currentTime);
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        // Melodía suave para niños (Twinkle Twinkle Little Star simplificada)
+        const melody = [
+            {note: 261.63, duration: 0.5}, // C
+            {note: 261.63, duration: 0.5}, // C
+            {note: 392.00, duration: 0.5}, // G
+            {note: 392.00, duration: 0.5}, // G
+            {note: 440.00, duration: 0.5}, // A
+            {note: 440.00, duration: 0.5}, // A
+            {note: 392.00, duration: 1.0}, // G
+            {note: 349.23, duration: 0.5}, // F
+            {note: 349.23, duration: 0.5}, // F
+            {note: 329.63, duration: 0.5}, // E
+            {note: 329.63, duration: 0.5}, // E
+            {note: 293.66, duration: 0.5}, // D
+            {note: 293.66, duration: 0.5}, // D
+            {note: 261.63, duration: 1.0}, // C
+        ];
         
-        oscillator.type = 'sine';
+        let currentTime = audioContext.currentTime;
+        let melodyIndex = 0;
         
-        // Crear una melodía suave y relajante
-        const notes = [220, 246.94, 261.63, 293.66, 329.63];
-        let noteIndex = 0;
-        
-        setInterval(() => {
+        function playMelody() {
             if (backgroundMusic && !backgroundMusic.paused) {
-                oscillator.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
-                noteIndex = (noteIndex + 1) % notes.length;
+                const currentNote = melody[melodyIndex];
+                playNote(currentNote.note, currentNote.duration, currentTime);
+                currentTime += currentNote.duration + 0.1;
+                melodyIndex = (melodyIndex + 1) % melody.length;
+                
+                if (melodyIndex === 0) {
+                    currentTime += 2; // Pausa entre repeticiones
+                }
+                
+                setTimeout(playMelody, (currentNote.duration + 0.1) * 1000);
             }
-        }, 2000);
+        }
         
-        // Conectar con el elemento de audio
-        backgroundMusic.play().catch(e => console.log('Música automática bloqueada'));
+        // Iniciar la melodía después de un pequeño delay
+        setTimeout(() => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    playMelody();
+                });
+            } else {
+                playMelody();
+            }
+        }, 1000);
+        
     } catch (error) {
-        console.log('Audio sintético no disponible');
+        console.log('Audio sintético no disponible:', error);
+        // Fallback: crear silencio como placeholder
+        backgroundMusic = new Audio();
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0;
     }
 }
 
@@ -636,9 +706,15 @@ function previousPage() {
         // Detener grabación automáticamente si está activa
         if (isRecording) {
             stopRecordingAutomatically();
+            // Esperar un momento antes de cambiar de página para que se complete la grabación
+            setTimeout(() => {
+                currentPage--;
+                displayCurrentPage();
+            }, 500);
+        } else {
+            currentPage--;
+            displayCurrentPage();
         }
-        currentPage--;
-        displayCurrentPage();
     }
 }
 
@@ -647,15 +723,21 @@ function nextPage() {
         // Detener grabación automáticamente si está activa
         if (isRecording) {
             stopRecordingAutomatically();
+            // Esperar un momento antes de cambiar de página para que se complete la grabación
+            setTimeout(() => {
+                currentPage++;
+                displayCurrentPage();
+            }, 500);
+        } else {
+            currentPage++;
+            displayCurrentPage();
         }
-        currentPage++;
-        displayCurrentPage();
     }
 }
 
 // Detener grabación automáticamente al cambiar de página
 function stopRecordingAutomatically() {
-    if (isRecording && mediaRecorder) {
+    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
         isRecording = false;
         const recordBtn = document.getElementById('record-btn');
@@ -1105,7 +1187,7 @@ function createNewBook() {
     };
     
     window.tempBookPages = [];
-    showMascot(`¡Excelente ${userName}! Ahora puedes empezar a escribir tu historia en "${title}".`);
+    showMascot(`¡Felicidades ${userName}! Has creado "${title}". ¡Eres un verdadero escritor mágico! Ahora puedes agregar texto y audio a cada página.`, 6000);
     showBookEditor(newBook);
 }
 
