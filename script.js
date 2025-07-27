@@ -13,58 +13,182 @@ let books = []; // Libros del usuario
 let templates = []; // Plantillas disponibles
 let autoPlayMode = false; // Modo auto-play
 let currentAudio = null; // Audio actual reproduciéndose
+let selectedCategory = 'aventura'; // Categoría seleccionada
+let isReadingBook = false; // Estado de lectura
+let audioQueue = []; // Cola de audios para reproducir
+let currentAudioIndex = 0; // Índice del audio actual en la cola
+let userImages = []; // Imágenes subidas por el usuario
 
-// Plantillas predefinidas de cuentos
-const DEFAULT_TEMPLATES = [
-    {
-        id: 'forest-adventure',
-        title: 'Aventura en el Bosque',
-        description: 'Una mágica aventura entre árboles gigantes y criaturas fantásticas.',
-        pages: [
-            { background: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800', text: '' }
+// Galería de imágenes predefinidas
+const IMAGE_GALLERY = {
+    naturaleza: [
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
+        'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800',
+        'https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800',
+        'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800'
+    ],
+    oceano: [
+        'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800',
+        'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800',
+        'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800',
+        'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=800',
+        'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800'
+    ],
+    espacio: [
+        'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800',
+        'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=800',
+        'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=800',
+        'https://images.unsplash.com/photo-1614732414444-096040ec8cfb?w=800',
+        'https://images.unsplash.com/photo-1538414915055-29d20b820b2b?w=800'
+    ],
+    fantasia: [
+        'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800',
+        'https://images.unsplash.com/photo-1563306406-e66174fa3787?w=800',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
+        'https://images.unsplash.com/photo-1520637836862-4d197d17c95a?w=800',
+        'https://images.unsplash.com/photo-1585411241865-ec2858c7de80?w=800'
+    ],
+    animales: [
+        'https://images.unsplash.com/photo-1474511320723-9a56873867b5?w=800',
+        'https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=800',
+        'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800',
+        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
+        'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=800'
+    ],
+    ciudad: [
+        'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
+        'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800',
+        'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
+        'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800',
+        'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'
+    ]
+};
+
+// Categorías de plantillas
+const TEMPLATE_CATEGORIES = {
+    aventura: {
+        name: 'Aventura',
+        icon: '🏔️',
+        templates: [
+            {
+                id: 'forest-adventure',
+                title: 'Aventura en el Bosque',
+                description: 'Una mágica aventura entre árboles gigantes y criaturas fantásticas.',
+                pages: [
+                    { background: IMAGE_GALLERY.naturaleza[0], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[1], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[2], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[3], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[4], text: '' }
+                ]
+            },
+            {
+                id: 'mountain-climb',
+                title: 'Escalada en la Montaña',
+                description: 'Sube hasta la cima más alta y descubre tesoros ocultos.',
+                pages: [
+                    { background: IMAGE_GALLERY.naturaleza[0], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[2], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[4], text: '' },
+                    { background: IMAGE_GALLERY.espacio[0], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[2], text: '' }
+                ]
+            }
         ]
     },
-    {
-        id: 'ocean-tale',
-        title: 'Cuentos del Océano',
-        description: 'Descubre los secretos del fondo marino con peces coloridos.',
-        pages: [
-            { background: 'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1583212292454-1fe6229603b7?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=800', text: '' }
+    fantasia: {
+        name: 'Fantasía',
+        icon: '🧚‍♀️',
+        templates: [
+            {
+                id: 'fairy-castle',
+                title: 'El Castillo de las Hadas',
+                description: 'Un reino mágico lleno de hadas, unicornios y mucha diversión.',
+                pages: [
+                    { background: IMAGE_GALLERY.fantasia[0], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[1], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[2], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[3], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[4], text: '' }
+                ]
+            },
+            {
+                id: 'magic-forest',
+                title: 'El Bosque Mágico',
+                description: 'Donde los árboles hablan y los animales son tus amigos.',
+                pages: [
+                    { background: IMAGE_GALLERY.fantasia[1], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[2], text: '' },
+                    { background: IMAGE_GALLERY.animales[0], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[3], text: '' },
+                    { background: IMAGE_GALLERY.naturaleza[5], text: '' }
+                ]
+            }
         ]
     },
-    {
-        id: 'space-journey',
-        title: 'Viaje Espacial',
-        description: 'Explora las estrellas y planetas lejanos en esta aventura cósmica.',
-        pages: [
-            { background: 'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1614732414444-096040ec8cfb?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1538414915055-29d20b820b2b?w=800', text: '' }
+    ciencia: {
+        name: 'Ciencia Ficción',
+        icon: '🚀',
+        templates: [
+            {
+                id: 'space-journey',
+                title: 'Viaje Espacial',
+                description: 'Explora las estrellas y planetas lejanos en esta aventura cósmica.',
+                pages: [
+                    { background: IMAGE_GALLERY.espacio[0], text: '' },
+                    { background: IMAGE_GALLERY.espacio[1], text: '' },
+                    { background: IMAGE_GALLERY.espacio[2], text: '' },
+                    { background: IMAGE_GALLERY.espacio[3], text: '' },
+                    { background: IMAGE_GALLERY.espacio[4], text: '' }
+                ]
+            },
+            {
+                id: 'robot-friend',
+                title: 'Mi Amigo Robot',
+                description: 'Una amistad especial entre un niño y su robot compañero.',
+                pages: [
+                    { background: IMAGE_GALLERY.ciudad[0], text: '' },
+                    { background: IMAGE_GALLERY.ciudad[2], text: '' },
+                    { background: IMAGE_GALLERY.espacio[1], text: '' },
+                    { background: IMAGE_GALLERY.ciudad[4], text: '' },
+                    { background: IMAGE_GALLERY.espacio[3], text: '' }
+                ]
+            }
         ]
     },
-    {
-        id: 'fairy-castle',
-        title: 'El Castillo de las Hadas',
-        description: 'Un reino mágico lleno de hadas, unicornios y mucha diversión.',
-        pages: [
-            { background: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1563306406-e66174fa3787?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1520637836862-4d197d17c95a?w=800', text: '' },
-            { background: 'https://images.unsplash.com/photo-1585411241865-ec2858c7de80?w=800', text: '' }
+    oceano: {
+        name: 'Océano',
+        icon: '🌊',
+        templates: [
+            {
+                id: 'ocean-tale',
+                title: 'Cuentos del Océano',
+                description: 'Descubre los secretos del fondo marino con peces coloridos.',
+                pages: [
+                    { background: IMAGE_GALLERY.oceano[0], text: '' },
+                    { background: IMAGE_GALLERY.oceano[1], text: '' },
+                    { background: IMAGE_GALLERY.oceano[2], text: '' },
+                    { background: IMAGE_GALLERY.oceano[3], text: '' },
+                    { background: IMAGE_GALLERY.oceano[4], text: '' }
+                ]
+            },
+            {
+                id: 'mermaid-adventure',
+                title: 'La Aventura de la Sirena',
+                description: 'Sumérgete en las profundidades con una sirena valiente.',
+                pages: [
+                    { background: IMAGE_GALLERY.oceano[1], text: '' },
+                    { background: IMAGE_GALLERY.oceano[3], text: '' },
+                    { background: IMAGE_GALLERY.fantasia[2], text: '' },
+                    { background: IMAGE_GALLERY.oceano[4], text: '' },
+                    { background: IMAGE_GALLERY.oceano[0], text: '' }
+                ]
+            }
         ]
     }
-];
+};
 
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', function() {
@@ -88,8 +212,11 @@ function initializeApp() {
     // Configurar eventos
     setupEventListeners();
     
-    // Inicializar plantillas
-    templates = [...DEFAULT_TEMPLATES];
+    // Inicializar plantillas desde categorías
+    templates = [];
+    Object.values(TEMPLATE_CATEGORIES).forEach(category => {
+        templates.push(...category.templates);
+    });
     
     console.log('✅ Aplicación inicializada correctamente');
 }
@@ -173,7 +300,9 @@ function showBookReader(book) {
     document.getElementById('book-reader').classList.remove('hidden');
     currentSection = 'book-reader';
     currentBook = book;
-    currentPage = 0;
+    currentPage = -1; // Empezar en -1 para mostrar portada
+    isReadingBook = true;
+    autoPlayMode = true;
     document.getElementById('reader-title').textContent = book.title;
     displayReaderPages();
 }
@@ -185,12 +314,32 @@ function hideAllSections() {
     });
 }
 
-// Mostrar plantillas
+// Mostrar plantillas por categorías
 function displayTemplates() {
     const grid = document.getElementById('templates-grid');
     grid.innerHTML = '';
     
-    templates.forEach(template => {
+    // Crear selector de categorías
+    const categorySelector = document.createElement('div');
+    categorySelector.className = 'category-selector';
+    categorySelector.innerHTML = `
+        <h3>📚 Categorías</h3>
+        <div class="category-buttons">
+            ${Object.entries(TEMPLATE_CATEGORIES).map(([key, category]) => 
+                `<button class="category-btn ${key === selectedCategory ? 'active' : ''}" onclick="selectCategory('${key}')">
+                    ${category.icon} ${category.name}
+                </button>`
+            ).join('')}
+        </div>
+    `;
+    grid.appendChild(categorySelector);
+    
+    // Mostrar plantillas de la categoría seleccionada
+    const selectedTemplates = TEMPLATE_CATEGORIES[selectedCategory].templates;
+    const templatesContainer = document.createElement('div');
+    templatesContainer.className = 'templates-container';
+    
+    selectedTemplates.forEach(template => {
         const bookCard = createBookCard(template, () => {
             // Crear copia de la plantilla para editar
             const newBook = {
@@ -201,8 +350,16 @@ function displayTemplates() {
             };
             showBookEditor(newBook);
         });
-        grid.appendChild(bookCard);
+        templatesContainer.appendChild(bookCard);
     });
+    
+    grid.appendChild(templatesContainer);
+}
+
+// Seleccionar categoría
+function selectCategory(category) {
+    selectedCategory = category;
+    displayTemplates();
 }
 
 // Mostrar libros del usuario
@@ -215,12 +372,68 @@ function displayUserBooks() {
         return;
     }
     
-    books.forEach(book => {
-        const bookCard = createBookCard(book, () => {
-            showBookReader(book);
-        });
+    books.forEach((book, index) => {
+        const bookCard = createUserBookCard(book, index);
         grid.appendChild(bookCard);
     });
+}
+
+// Crear tarjeta de libro del usuario con opciones
+function createUserBookCard(book, index) {
+    const card = document.createElement('div');
+    card.className = 'book-card user-book-card';
+    
+    const cover = document.createElement('div');
+    cover.className = 'book-cover';
+    cover.style.backgroundImage = `url(${book.pages[0].background})`;
+    cover.onclick = () => showBookReader(book);
+    
+    const info = document.createElement('div');
+    info.className = 'book-info';
+    
+    const title = document.createElement('h3');
+    title.className = 'book-title';
+    title.textContent = book.title;
+    
+    const description = document.createElement('p');
+    description.className = 'book-description';
+    description.textContent = book.description;
+    
+    const actions = document.createElement('div');
+    actions.className = 'book-actions';
+    
+    const readBtn = document.createElement('button');
+    readBtn.className = 'action-btn read-btn';
+    readBtn.innerHTML = '📖 Leer';
+    readBtn.onclick = () => showBookReader(book);
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'action-btn edit-btn';
+    editBtn.innerHTML = '✏️ Editar';
+    editBtn.onclick = () => showBookEditor(book);
+    
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'action-btn download-btn';
+    downloadBtn.innerHTML = '💾 Descargar';
+    downloadBtn.onclick = () => downloadBook(book);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'action-btn delete-btn';
+    deleteBtn.innerHTML = '🗑️ Eliminar';
+    deleteBtn.onclick = () => deleteBook(index);
+    
+    actions.appendChild(readBtn);
+    actions.appendChild(editBtn);
+    actions.appendChild(downloadBtn);
+    actions.appendChild(deleteBtn);
+    
+    info.appendChild(title);
+    info.appendChild(description);
+    info.appendChild(actions);
+    card.appendChild(cover);
+    card.appendChild(info);
+    
+    return card;
 }
 
 // Crear tarjeta de libro
@@ -397,6 +610,82 @@ function displayReaderPages() {
     const leftPage = document.getElementById('page-left');
     const rightPage = document.getElementById('page-right');
     
+    // Limpiar eventos anteriores
+    leftPage.onclick = null;
+    rightPage.onclick = null;
+    
+    if (currentPage === -1) {
+        // Mostrar portada
+        showBookCover();
+    } else if (currentPage >= currentBook.pages.length) {
+        // Mostrar contraportada y finalizar
+        showBookBackCover();
+    } else {
+        // Mostrar páginas normales
+        showRegularPages();
+    }
+    
+    // Actualizar barra de progreso
+    updateReadingProgress();
+}
+
+function showBookCover() {
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    
+    // Ocultar página izquierda
+    leftPage.style.display = 'none';
+    
+    // Mostrar portada en página derecha
+    const rightBg = rightPage.querySelector('.page-background-right');
+    const rightText = rightPage.querySelector('.page-text-right');
+    
+    rightBg.style.backgroundImage = `url(${currentBook.pages[0].background})`;
+    rightText.innerHTML = `
+        <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">${currentBook.title}</h1>
+            <p style="font-size: 1.2rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">${currentBook.description}</p>
+            <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para comenzar</p>
+        </div>
+    `;
+    rightPage.style.display = 'flex';
+    rightPage.onclick = () => {
+        currentPage = 0;
+        displayReaderPages();
+    };
+}
+
+function showBookBackCover() {
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    
+    // Mostrar contraportada en página izquierda
+    const leftBg = leftPage.querySelector('.page-background-left');
+    const leftText = leftPage.querySelector('.page-text-left');
+    
+    leftBg.style.backgroundImage = `url(${currentBook.pages[currentBook.pages.length - 1].background})`;
+    leftText.innerHTML = `
+        <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">¡Fin!</h2>
+            <p style="font-size: 1.1rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">¡Has terminado de leer "${currentBook.title}"!</p>
+            <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para cerrar</p>
+        </div>
+    `;
+    leftPage.style.display = 'flex';
+    
+    // Ocultar página derecha
+    rightPage.style.display = 'none';
+    
+    leftPage.onclick = () => {
+        isReadingBook = false;
+        showMyBooks();
+    };
+}
+
+function showRegularPages() {
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    
     // Página izquierda
     if (currentPage < currentBook.pages.length) {
         const page = currentBook.pages[currentPage];
@@ -406,6 +695,14 @@ function displayReaderPages() {
         leftBg.style.backgroundImage = `url(${page.background})`;
         leftText.textContent = page.text || '';
         leftPage.style.display = 'flex';
+        
+        leftPage.onclick = () => {
+            if (currentPage > 0) {
+                currentPage -= 2;
+                if (currentPage < 0) currentPage = -1;
+                displayReaderPages();
+            }
+        };
     } else {
         leftPage.style.display = 'none';
     }
@@ -419,19 +716,55 @@ function displayReaderPages() {
         rightBg.style.backgroundImage = `url(${page.background})`;
         rightText.textContent = page.text || '';
         rightPage.style.display = 'flex';
+        
+        rightPage.onclick = () => {
+            currentPage += 2;
+            displayReaderPages();
+        };
     } else {
         rightPage.style.display = 'none';
     }
     
-    // Reproducir audio automáticamente si está activado
-    if (autoPlayMode && currentBook.pages[currentPage]?.audio) {
-        setTimeout(() => {
-            playReaderAudio();
-        }, 500);
+    // Preparar y reproducir audios de las páginas visibles
+    prepareAndPlayAudios();
+}
+
+function prepareAndPlayAudios() {
+    audioQueue = [];
+    currentAudioIndex = 0;
+    
+    // Agregar audios de páginas visibles a la cola
+    if (currentPage >= 0 && currentPage < currentBook.pages.length && currentBook.pages[currentPage].audio) {
+        audioQueue.push(currentBook.pages[currentPage].audio);
+    }
+    if (currentPage + 1 < currentBook.pages.length && currentBook.pages[currentPage + 1].audio) {
+        audioQueue.push(currentBook.pages[currentPage + 1].audio);
     }
     
-    // Actualizar barra de progreso
-    updateReadingProgress();
+    // Reproducir primer audio si hay cola
+    if (audioQueue.length > 0 && autoPlayMode) {
+        setTimeout(() => {
+            playNextAudioInQueue();
+        }, 500);
+    }
+}
+
+function playNextAudioInQueue() {
+    if (currentAudioIndex < audioQueue.length) {
+        if (currentAudio) {
+            currentAudio.pause();
+        }
+        
+        currentAudio = new Audio(audioQueue[currentAudioIndex]);
+        currentAudio.onended = () => {
+            currentAudioIndex++;
+            setTimeout(() => {
+                playNextAudioInQueue();
+            }, 500);
+        };
+        
+        currentAudio.play();
+    }
 }
 
 function readerPreviousPage() {
@@ -514,16 +847,67 @@ function addNewPage() {
     
     pageDiv.innerHTML = `
         <h4>Página ${pageCount}</h4>
-        <div class="image-upload">
-            <label for="page-image-${pageCount}">📷 Subir imagen de fondo</label>
-            <input type="file" id="page-image-${pageCount}" accept="image/*" onchange="handleImageUpload(this, ${pageCount - 1})">
+        <div class="image-selection">
+            <div class="image-upload">
+                <label for="page-image-${pageCount}">📷 Subir imagen propia</label>
+                <input type="file" id="page-image-${pageCount}" accept="image/*" onchange="handleImageUpload(this, ${pageCount - 1})">
+            </div>
+            <button class="gallery-btn" onclick="showImageGallery(${pageCount - 1})">🖼️ Galería de imágenes</button>
         </div>
         <div class="image-preview" id="preview-${pageCount}" style="display: none; margin: 1rem 0;">
             <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount}">
         </div>
+        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount}">
+            <div class="gallery-content">
+                <h4>Selecciona una imagen</h4>
+                <div class="gallery-categories">
+                    ${Object.entries(IMAGE_GALLERY).map(([category, images]) => `
+                        <div class="gallery-category">
+                            <h5>${category.charAt(0).toUpperCase() + category.slice(1)}</h5>
+                            <div class="gallery-images">
+                                ${images.map(img => `
+                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount - 1}, ${pageCount})" 
+                                         style="width: 80px; height: 60px; object-fit: cover; margin: 5px; cursor: pointer; border-radius: 5px;">
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button onclick="closeImageGallery(${pageCount})">Cerrar</button>
+            </div>
+        </div>
     `;
     
     container.appendChild(pageDiv);
+}
+
+function showImageGallery(pageIndex) {
+    const modal = document.getElementById(`gallery-modal-${pageIndex + 1}`);
+    modal.classList.remove('hidden');
+}
+
+function closeImageGallery(pageNumber) {
+    const modal = document.getElementById(`gallery-modal-${pageNumber}`);
+    modal.classList.add('hidden');
+}
+
+function selectGalleryImage(imageUrl, pageIndex, pageNumber) {
+    const preview = document.getElementById(`preview-${pageNumber}`);
+    const img = document.getElementById(`img-${pageNumber}`);
+    
+    img.src = imageUrl;
+    preview.style.display = 'block';
+    
+    // Guardar la imagen en el arreglo temporal
+    if (!window.tempBookPages) {
+        window.tempBookPages = [];
+    }
+    window.tempBookPages[pageIndex] = {
+        background: imageUrl,
+        text: ''
+    };
+    
+    closeImageGallery(pageNumber);
 }
 
 function handleImageUpload(input, pageIndex) {
@@ -575,6 +959,50 @@ function createNewBook() {
     showBookEditor(newBook);
 }
 
+// Función para eliminar libro
+function deleteBook(index) {
+    if (confirm(`¿Estás seguro de que quieres eliminar "${books[index].title}"? Esta acción no se puede deshacer.`)) {
+        books.splice(index, 1);
+        saveUserData();
+        displayUserBooks();
+        alert('Libro eliminado correctamente.');
+    }
+}
+
+// Función para descargar libro
+function downloadBook(book) {
+    try {
+        const bookData = {
+            title: book.title,
+            description: book.description,
+            pages: book.pages.map(page => ({
+                text: page.text || '',
+                background: page.background,
+                hasAudio: !!page.audio
+            })),
+            createdAt: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(bookData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}_AudioTale.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert('¡Libro descargado correctamente!');
+    } catch (error) {
+        console.error('Error al descargar libro:', error);
+        alert('Error al descargar el libro. Inténtalo de nuevo.');
+    }
+}
+
 // Funciones de compartir
 function openShareModal() {
     document.getElementById('share-modal').classList.remove('hidden');
@@ -611,10 +1039,82 @@ function copyLink() {
     });
 }
 
+// Funciones para imágenes del usuario
+function handleUserImageUpload(input) {
+    const files = input.files;
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                userImages.push({
+                    id: 'user_img_' + Date.now() + '_' + i,
+                    url: e.target.result,
+                    name: file.name
+                });
+                saveUserData();
+                displayUserImages();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    input.value = ''; // Limpiar input
+}
+
+function displayUserImages() {
+    const grid = document.getElementById('user-images-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    
+    userImages.forEach((image, index) => {
+        const imageItem = document.createElement('div');
+        imageItem.className = 'user-image-item';
+        
+        imageItem.innerHTML = `
+            <img src="${image.url}" onclick="selectUserImage('${image.url}')" title="${image.name}">
+            <button class="user-image-delete" onclick="deleteUserImage(${index})" title="Eliminar imagen">×</button>
+        `;
+        
+        grid.appendChild(imageItem);
+    });
+}
+
+function selectUserImage(imageUrl) {
+    // Esta función puede ser llamada desde el contexto de creación de páginas
+    alert('Imagen seleccionada. Implementar lógica de selección según el contexto.');
+}
+
+function deleteUserImage(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
+        userImages.splice(index, 1);
+        saveUserData();
+        displayUserImages();
+    }
+}
+
+function initializeCreator() {
+    document.getElementById('book-title-input').value = '';
+    document.getElementById('book-description').value = '';
+    document.getElementById('page-creator').innerHTML = '';
+    
+    // Mostrar imágenes del usuario
+    displayUserImages();
+    
+    // Agregar páginas iniciales
+    for (let i = 0; i < 3; i++) {
+        addNewPage();
+    }
+}
+
 // Persistencia de datos
 function saveUserData() {
     try {
-        localStorage.setItem('audioTaleBooks', JSON.stringify(books));
+        const userData = {
+            books: books,
+            userImages: userImages
+        };
+        localStorage.setItem('audioTaleData', JSON.stringify(userData));
         console.log('💾 Datos guardados correctamente');
     } catch (error) {
         console.error('Error al guardar datos:', error);
@@ -623,14 +1123,25 @@ function saveUserData() {
 
 function loadUserData() {
     try {
-        const savedBooks = localStorage.getItem('audioTaleBooks');
-        if (savedBooks) {
-            books = JSON.parse(savedBooks);
-            console.log(`📚 Cargados ${books.length} libros guardados`);
+        const savedData = localStorage.getItem('audioTaleData');
+        if (savedData) {
+            const userData = JSON.parse(savedData);
+            books = userData.books || [];
+            userImages = userData.userImages || [];
+            console.log(`📚 Cargados ${books.length} libros y ${userImages.length} imágenes`);
+        }
+        
+        // Migrar datos antiguos si existen
+        const oldBooks = localStorage.getItem('audioTaleBooks');
+        if (oldBooks && books.length === 0) {
+            books = JSON.parse(oldBooks);
+            saveUserData();
+            localStorage.removeItem('audioTaleBooks');
         }
     } catch (error) {
         console.error('Error al cargar datos:', error);
         books = [];
+        userImages = [];
     }
 }
 

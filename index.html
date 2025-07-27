@@ -141,6 +141,18 @@
                     <button class="action-btn" id="create-book-btn">📚 Crear Libro</button>
                 </div>
             </div>
+            
+            <!-- Galería de imágenes para el usuario -->
+            <div class="user-gallery-section">
+                <h3>🖼️ Mi Galería de Imágenes</h3>
+                <div class="upload-user-image">
+                    <label for="user-image-upload">📷 Subir nueva imagen a mi galería</label>
+                    <input type="file" id="user-image-upload" accept="image/*" multiple onchange="handleUserImageUpload(this)">
+                </div>
+                <div class="user-images-grid" id="user-images-grid">
+                    <!-- Imágenes del usuario se mostrarán aquí -->
+                </div>
+            </div>
         </div>
     </div>
 
