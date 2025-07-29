@@ -513,15 +513,6 @@ function playMagicSound() {
 
 // Configurar event listeners
 function setupEventListeners() {
-    // Advertencia al intentar cerrar o recargar la página desde el editor con cambios sin guardar
-    window.addEventListener('beforeunload', function (e) {
-        if (currentSection === 'book-editor' && unsavedChanges) {
-            // Mensaje estándar del navegador (no se puede personalizar por seguridad)
-            e.preventDefault();
-            e.returnValue = '';
-            return '';
-        }
-    });
     // Menú principal
     document.getElementById('library-btn').addEventListener('click', showLibrary);
     document.getElementById('my-books-btn').addEventListener('click', showMyBooks);
