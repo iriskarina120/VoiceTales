@@ -520,29 +520,14 @@ function setupEventListeners() {
 
     // Editor
     document.getElementById('editor-back-btn').addEventListener('click', () => {
-        // Detener grabación si está activa
-        if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            isRecording = false;
-            const recordBtn = document.getElementById('record-btn');
-            recordBtn.textContent = '🎤 Grabar';
-            recordBtn.classList.remove('recording');
+        if (unsavedChanges) {
+            showUnsavedChangesPopup(() => {
+                unsavedChanges = false;
+                showMainMenu();
+            });
+        } else {
+            showMainMenu();
         }
-        // Guardar automáticamente el libro si hay cambios
-        if (currentBook) {
-            unsavedChanges = false;
-            const hasContent = currentBook.pages.some(page => page.text || page.audio);
-            if (hasContent) {
-                const existingIndex = books.findIndex(book => book.id === currentBook.id);
-                if (existingIndex >= 0) {
-                    books[existingIndex] = currentBook;
-                } else {
-                    books.push(currentBook);
-                }
-                saveUserData();
-            }
-        }
-        showMainMenu();
     });
     document.getElementById('save-book-btn').addEventListener('click', saveCurrentBook);
     document.getElementById('prev-page-btn').addEventListener('click', previousPage);
@@ -1425,468 +1410,426 @@ async function createBookVideo(book) {
 
         const chunks = [];
         mediaRecorder.ondataavailable = (event) => {
-            try {
-                showMascot(`${userName}, estoy preparando tu libro animado... ¡Esto puede tomar unos momentos!`, 3000);
-                playMagicSound();
-
-                // Canvas y contexto
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 1280;
-                canvas.height = 720;
-
-                // MediaRecorder para capturar el canvas
-                const stream = canvas.captureStream(30);
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const audioDestination = audioContext.createMediaStreamDestination();
-                stream.addTrack(audioDestination.stream.getAudioTracks()[0]);
-                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
-                const chunks = [];
-                mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(chunks, { type: 'video/webm' });
-                    downloadVideoBlob(blob, book.title);
-                };
-                mediaRecorder.start();
-
-                // Utilidades visuales
-                function drawBookFrame() {
-                    // Fondo libro abierto
-                    ctx.fillStyle = '#f5e6c8';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    // Sombra central
-                    ctx.fillStyle = 'rgba(0,0,0,0.08)';
-                    ctx.fillRect(canvas.width / 2 - 10, 40, 20, canvas.height - 80);
-                    // Borde
-                    ctx.strokeStyle = '#bfa76f';
-                    ctx.lineWidth = 12;
-                    ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
-                }
-
-                function drawPageImage(imgUrl, side = 'right') {
-                    return new Promise(resolve => {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.onload = () => {
-                            // Página izquierda o derecha
-                            const x = side === 'left' ? 60 : canvas.width / 2 + 10;
-                            ctx.save();
-                            ctx.beginPath();
-                            ctx.moveTo(x, 60);
-                            ctx.lineTo(x + canvas.width / 2 - 70, 60);
-                            ctx.lineTo(x + canvas.width / 2 - 70, canvas.height - 60);
-                            ctx.lineTo(x, canvas.height - 60);
-                            ctx.closePath();
-                            ctx.clip();
-                            ctx.drawImage(img, x, 60, canvas.width / 2 - 70, canvas.height - 120);
-                            ctx.restore();
-                            resolve();
-                        };
-                        img.onerror = () => resolve();
-                        img.src = imgUrl;
-                    });
-                }
-
-                function drawPageText(text, side = 'right') {
-                    ctx.save();
-                    ctx.font = 'bold 32px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#333';
-                    ctx.textAlign = 'center';
-                    ctx.shadowColor = '#fff';
-                    ctx.shadowBlur = 4;
-                    const x = side === 'left' ? canvas.width / 4 : 3 * canvas.width / 4;
-                    const y = canvas.height - 120;
-                    // Dividir texto en líneas
-                    const maxWidth = canvas.width / 2 - 100;
-                    let words = (text || '').split(' '), line = '', lines = [];
-                    for (let w of words) {
-                        let test = line + w + ' ';
-                        if (ctx.measureText(test).width > maxWidth && line) {
-                            lines.push(line); line = w + ' ';
-                        } else { line = test; }
-                    }
-                    if (line) lines.push(line);
-                    lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + 40 * i));
-                    ctx.restore();
-                }
-
-                // Animación de cambio de página
-                async function animatePageTurn(fromImg, toImg, fromText, toText) {
-                    // Simula el efecto de pasar página (básico)
-                    for (let t = 0; t <= 1; t += 0.1) {
-                        drawBookFrame();
-                        // Página izquierda (anterior)
-                        if (fromImg) await drawPageImage(fromImg, 'left');
-                        // Página derecha (transición)
-                        ctx.save();
-                        ctx.globalAlpha = 1 - t;
-                        if (fromImg) await drawPageImage(fromImg, 'right');
-                        ctx.globalAlpha = t;
-                        if (toImg) await drawPageImage(toImg, 'right');
-                        ctx.globalAlpha = 1;
-                        ctx.restore();
-                        // Textos
-                        if (fromText) drawPageText(fromText, 'left');
-                        if (fromText) drawPageText(fromText, 'right');
-                        if (toText) drawPageText(toText, 'right');
-                        await new Promise(r => setTimeout(r, 40));
-                    }
-                }
-
-                // Páginas: portada, páginas, contraportada
-                const pages = [
-                    { type: 'cover', img: book.pages[0]?.background, text: book.title, desc: book.description },
-                    ...book.pages.map((p, i) => ({ type: 'page', img: p.background, text: p.text, audio: p.audio, idx: i })),
-                    { type: 'back', img: book.pages[book.pages.length - 1]?.background, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"` }
-                ];
-
-                let idx = 0;
-                async function renderBookPages() {
-                    let prevImg = null, prevText = '';
-                    for (let i = 0; i < pages.length; i++) {
-                        drawBookFrame();
-                        if (i === 0) { // Portada
-                            await drawPageImage(pages[i].img, 'right');
-                            ctx.save();
-                            ctx.font = 'bold 48px "Comic Sans MS", cursive';
-                            ctx.fillStyle = '#4a90e2';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(pages[i].text, 3 * canvas.width / 4, 200);
-                            ctx.font = '28px "Comic Sans MS", cursive';
-                            ctx.fillStyle = '#333';
-                            ctx.fillText(pages[i].desc || '', 3 * canvas.width / 4, 260);
-                            ctx.restore();
-                            await new Promise(r => setTimeout(r, 2000));
-                        } else if (i === pages.length - 1) { // Contraportada
-                            await drawPageImage(pages[i].img, 'left');
-                            ctx.save();
-                            ctx.font = 'bold 48px "Comic Sans MS", cursive';
-                            ctx.fillStyle = '#4a90e2';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(pages[i].text, canvas.width / 4, 200);
-                            ctx.font = '28px "Comic Sans MS", cursive';
-                            ctx.fillStyle = '#333';
-                            ctx.fillText(pages[i].desc || '', canvas.width / 4, 260);
-                            ctx.restore();
-                            await new Promise(r => setTimeout(r, 2000));
-                        } else {
-                            // Animar cambio de página
-                            await animatePageTurn(prevImg, pages[i].img, prevText, pages[i].text);
-                            drawBookFrame();
-                            await drawPageImage(pages[i].img, 'right');
-                            drawPageText(pages[i].text, 'right');
-                            // Audio
-                            if (pages[i].audio) {
-                                const audio = new Audio(pages[i].audio);
-                                const audioSource = audioContext.createMediaElementSource(audio);
-                                audioSource.connect(audioDestination);
-                                await new Promise(res => {
-                                    audio.onended = res;
-                                    audio.play().catch(() => res());
-                                });
-                            } else {
-                                await new Promise(r => setTimeout(r, 3500));
-                            }
-                        }
-                        prevImg = pages[i].img;
-                        prevText = pages[i].text;
-                    }
-                    setTimeout(() => {
-                        mediaRecorder.stop();
-                        audioContext.close();
-                        playSuccessSound();
-                        showMascot(`¡Increíble ${userName}! Tu libro animado está listo para descargar y compartir.`, 4000);
-                    }, 1000);
-                }
-                await renderBookPages();
-            } catch (error) {
-                console.error('Error creando video:', error);
-                playErrorSound();
-                showMascot(`${userName}, hubo un problema creando el video. Intenta de nuevo.`);
+            if (event.data.size > 0) {
+                chunks.push(event.data);
             }
-            // ...código actualizado, ver arriba...
-        }
+        };
 
-        // Función para descargar el blob de video
-        function downloadVideoBlob(blob, title) {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_AudioTale.webm`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            downloadVideoBlob(blob, book.title);
+        };
 
-        // Función para descargar libro (ahora genera video)
-        function downloadBook(book) {
-            playClickSound();
-            createBookVideo(book);
-        }
+        // Comenzar grabación
+        mediaRecorder.start();
 
-        // Funciones de compartir
-        function openShareModal() {
-            document.getElementById('share-modal').classList.remove('hidden');
-        }
+        // Función para renderizar cada página
+        async function renderPage(pageIndex) {
+            return new Promise((resolve) => {
+                const page = book.pages[pageIndex];
 
-        function closeShareModal() {
-            document.getElementById('share-modal').classList.add('hidden');
-        }
+                // Limpiar canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        function shareOnFacebook() {
-            playClickSound();
-            const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬`;
-            const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`;
-            window.open(url, '_blank', 'width=600,height=400');
-            showMascot(`${userName}, ¡genial! Compartir tus historias inspire a otros niños.`);
-            closeShareModal();
-        }
+                // Cargar imagen de fondo
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    // Dibujar fondo
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        function shareOnTwitter() {
-            playClickSound();
-            const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Descarga el video y compártelo con tus amigos.`;
-            const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
-            window.open(url, '_blank', 'width=600,height=400');
-            showMascot(`¡Perfecto ${userName}! Twitter es genial para compartir tu creatividad.`);
-            closeShareModal();
-        }
+                    // Agregar overlay semitransparente
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        function shareOnWhatsApp() {
-            playClickSound();
-            const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Primero descarga el video desde la app: ${window.location.href}`;
-            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-            window.open(url, '_blank');
-            showMascot(`¡Excelente ${userName}! Compartir con la familia es lo mejor.`);
-            closeShareModal();
-        }
+                    // Agregar título del libro en la primera página
+                    if (pageIndex === 0) {
+                        ctx.font = 'bold 80px "Comic Sans MS", cursive';
+                        ctx.fillStyle = '#333';
+                        ctx.textAlign = 'center';
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 4;
+                        ctx.strokeText(book.title, canvas.width / 2, 200);
+                        ctx.fillText(book.title, canvas.width / 2, 200);
+                    }
 
-        function copyLink() {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                alert('¡Enlace copiado al portapapeles!');
-                closeShareModal();
+                    // Agregar texto de la página
+                    if (page.text) {
+                        ctx.font = 'bold 48px "Comic Sans MS", cursive';
+                        ctx.fillStyle = '#333';
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 3;
+                        ctx.textAlign = 'center';
+
+                        const words = page.text.split(' ');
+                        const lines = [];
+                        let currentLine = '';
+
+                        words.forEach(word => {
+                            const testLine = currentLine + word + ' ';
+                            const metrics = ctx.measureText(testLine);
+                            if (metrics.width > canvas.width - 200 && currentLine !== '') {
+                                lines.push(currentLine);
+                                currentLine = word + ' ';
+                            } else {
+                                currentLine = testLine;
+                            }
+                        });
+                        lines.push(currentLine);
+
+                        const startY = canvas.height - 300;
+                        lines.forEach((line, index) => {
+                            const y = startY + (index * 60);
+                            ctx.strokeText(line, canvas.width / 2, y);
+                            ctx.fillText(line, canvas.width / 2, y);
+                        });
+                    }
+
+                    // Agregar número de página
+                    ctx.font = 'bold 36px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#666';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`Página ${pageIndex + 1}`, canvas.width - 50, canvas.height - 50);
+
+                    // Agregar logo de AudioTale
+                    ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('🎧 AudioTale', 50, canvas.height - 50);
+
+                    resolve();
+                };
+
+                img.onerror = () => {
+                    // Si no se puede cargar la imagen, usar color sólido
+                    ctx.fillStyle = '#667eea';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    resolve();
+                };
+
+                img.src = page.background;
             });
         }
 
-        // Funciones para imágenes del usuario
-        function handleUserImageUpload(input) {
-            const files = input.files;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        userImages.push({
-                            id: 'user_img_' + Date.now() + '_' + i,
-                            url: e.target.result,
-                            name: file.name
-                        });
-                        saveUserData();
-                        displayUserImages();
-                    };
-                    reader.readAsDataURL(file);
+        // Renderizar cada página por 3 segundos
+        let currentPageIndex = 0;
+
+        async function renderNextPage() {
+            if (currentPageIndex < book.pages.length) {
+                await renderPage(currentPageIndex);
+
+                // Reproducir audio de la página si existe
+                if (book.pages[currentPageIndex].audio) {
+                    const audio = new Audio(book.pages[currentPageIndex].audio);
+                    const audioSource = audioContext.createMediaElementSource(audio);
+                    audioSource.connect(audioDestination);
+                    audio.play().catch(e => console.log('Error reproduciendo audio:', e));
                 }
+
+                currentPageIndex++;
+                setTimeout(renderNextPage, 4000); // 4 segundos por página
+            } else {
+                // Finalizar grabación
+                setTimeout(() => {
+                    mediaRecorder.stop();
+                    audioContext.close();
+                    playSuccessSound();
+                    showMascot(`¡Increíble ${userName}! Tu video está listo para descargar y compartir.`, 4000);
+                }, 1000);
             }
-            input.value = ''; // Limpiar input
         }
 
-        function displayUserImages() {
-            const grid = document.getElementById('user-images-grid');
-            if (!grid) return;
+        // Comenzar renderizado
+        renderNextPage();
 
-            grid.innerHTML = '';
+    } catch (error) {
+        console.error('Error creando video:', error);
+        playErrorSound();
+        showMascot(`${userName}, hubo un problema creando el video. Intenta de nuevo.`);
+    }
+}
 
-            userImages.forEach((image, index) => {
-                const imageItem = document.createElement('div');
-                imageItem.className = 'user-image-item';
+// Función para descargar el blob de video
+function downloadVideoBlob(blob, title) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_AudioTale.webm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
-                imageItem.innerHTML = `
+// Función para descargar libro (ahora genera video)
+function downloadBook(book) {
+    playClickSound();
+    createBookVideo(book);
+}
+
+// Funciones de compartir
+function openShareModal() {
+    document.getElementById('share-modal').classList.remove('hidden');
+}
+
+function closeShareModal() {
+    document.getElementById('share-modal').classList.add('hidden');
+}
+
+function shareOnFacebook() {
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬`;
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+    showMascot(`${userName}, ¡genial! Compartir tus historias inspire a otros niños.`);
+    closeShareModal();
+}
+
+function shareOnTwitter() {
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Descarga el video y compártelo con tus amigos.`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+    showMascot(`¡Perfecto ${userName}! Twitter es genial para compartir tu creatividad.`);
+    closeShareModal();
+}
+
+function shareOnWhatsApp() {
+    playClickSound();
+    const text = `¡Mira este increíble cuento "${currentBook.title}" que creé en AudioTale! 🎧📚🎬 Primero descarga el video desde la app: ${window.location.href}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+    showMascot(`¡Excelente ${userName}! Compartir con la familia es lo mejor.`);
+    closeShareModal();
+}
+
+function copyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+        alert('¡Enlace copiado al portapapeles!');
+        closeShareModal();
+    });
+}
+
+// Funciones para imágenes del usuario
+function handleUserImageUpload(input) {
+    const files = input.files;
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                userImages.push({
+                    id: 'user_img_' + Date.now() + '_' + i,
+                    url: e.target.result,
+                    name: file.name
+                });
+                saveUserData();
+                displayUserImages();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    input.value = ''; // Limpiar input
+}
+
+function displayUserImages() {
+    const grid = document.getElementById('user-images-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+
+    userImages.forEach((image, index) => {
+        const imageItem = document.createElement('div');
+        imageItem.className = 'user-image-item';
+
+        imageItem.innerHTML = `
             <img src="${image.url}" onclick="selectUserImage('${image.url}')" title="${image.name}">
             <button class="user-image-delete" onclick="deleteUserImage(${index})" title="Eliminar imagen">×</button>
         `;
 
-                grid.appendChild(imageItem);
-            });
-        }
+        grid.appendChild(imageItem);
+    });
+}
 
-        function selectUserImage(imageUrl) {
-            // Esta función puede ser llamada desde el contexto de creación de páginas
-            alert('Imagen seleccionada. Implementar lógica de selección según el contexto.');
-        }
+function selectUserImage(imageUrl) {
+    // Esta función puede ser llamada desde el contexto de creación de páginas
+    alert('Imagen seleccionada. Implementar lógica de selección según el contexto.');
+}
 
-        function deleteUserImage(index) {
-            if (confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
-                userImages.splice(index, 1);
-                saveUserData();
-                displayUserImages();
-            }
-        }
+function deleteUserImage(index) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta imagen?')) {
+        userImages.splice(index, 1);
+        saveUserData();
+        displayUserImages();
+    }
+}
 
-        function initializeCreator() {
-            document.getElementById('book-title-input').value = '';
-            document.getElementById('book-description').value = '';
-            document.getElementById('page-creator').innerHTML = '';
+function initializeCreator() {
+    document.getElementById('book-title-input').value = '';
+    document.getElementById('book-description').value = '';
+    document.getElementById('page-creator').innerHTML = '';
 
-            // Mostrar imágenes del usuario
-            displayUserImages();
+    // Mostrar imágenes del usuario
+    displayUserImages();
 
-            // Agregar páginas iniciales
-            for (let i = 0; i < 3; i++) {
-                addNewPage();
-            }
-        }
+    // Agregar páginas iniciales
+    for (let i = 0; i < 3; i++) {
+        addNewPage();
+    }
+}
 
-        // Persistencia de datos
-        function saveUserData() {
-            try {
-                const userData = {
-                    books: books,
-                    userImages: userImages
-                };
-                localStorage.setItem('audioTaleData', JSON.stringify(userData));
-                console.log('💾 Datos guardados correctamente');
-            } catch (error) {
-                console.error('Error al guardar datos:', error);
-            }
-        }
+// Persistencia de datos
+function saveUserData() {
+    try {
+        const userData = {
+            books: books,
+            userImages: userImages
+        };
+        localStorage.setItem('audioTaleData', JSON.stringify(userData));
+        console.log('💾 Datos guardados correctamente');
+    } catch (error) {
+        console.error('Error al guardar datos:', error);
+    }
+}
 
-        function loadUserData() {
-            try {
-                const savedData = localStorage.getItem('audioTaleData');
-                if (savedData) {
-                    const userData = JSON.parse(savedData);
-                    books = userData.books || [];
-                    userImages = userData.userImages || [];
-                    // Migrar audios antiguos (blob:) a null para evitar referencias rotas
-                    books.forEach(book => {
-                        if (book.pages && Array.isArray(book.pages)) {
-                            book.pages.forEach(page => {
-                                // Solo borrar audios que sean blob:, no los que sean data:audio
-                                if (page.audio && typeof page.audio === 'string') {
-                                    if (page.audio.startsWith('blob:')) {
-                                        console.log('🧹 Migrando audio blob: a null en página', page);
-                                        page.audio = null;
-                                    } else if (page.audio.startsWith('data:audio')) {
-                                        // Audio válido, log para depuración
-                                        console.log('✅ Audio base64 detectado en página', page);
-                                    }
-                                }
-                            });
+function loadUserData() {
+    try {
+        const savedData = localStorage.getItem('audioTaleData');
+        if (savedData) {
+            const userData = JSON.parse(savedData);
+            books = userData.books || [];
+            userImages = userData.userImages || [];
+            // Migrar audios antiguos (blob:) a null para evitar referencias rotas
+            books.forEach(book => {
+                if (book.pages && Array.isArray(book.pages)) {
+                    book.pages.forEach(page => {
+                        // Solo borrar audios que sean blob:, no los que sean data:audio
+                        if (page.audio && typeof page.audio === 'string') {
+                            if (page.audio.startsWith('blob:')) {
+                                console.log('🧹 Migrando audio blob: a null en página', page);
+                                page.audio = null;
+                            } else if (page.audio.startsWith('data:audio')) {
+                                // Audio válido, log para depuración
+                                console.log('✅ Audio base64 detectado en página', page);
+                            }
                         }
                     });
-                    console.log(`📚 Cargados ${books.length} libros y ${userImages.length} imágenes`);
                 }
-
-                // Migrar datos antiguos si existen
-                const oldBooks = localStorage.getItem('audioTaleBooks');
-                if (oldBooks && books.length === 0) {
-                    books = JSON.parse(oldBooks);
-                    saveUserData();
-                    localStorage.removeItem('audioTaleBooks');
-                }
-            } catch (error) {
-                console.error('Error al cargar datos:', error);
-                books = [];
-                userImages = [];
-            }
-        }
-
-        // Service Worker para PWA (Progressive Web App)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('📱 Service Worker registrado correctamente');
-                    })
-                    .catch(error => {
-                        console.log('❌ Error al registrar Service Worker:', error);
-                    });
             });
+            console.log(`📚 Cargados ${books.length} libros y ${userImages.length} imágenes`);
         }
 
-        // Gestión de eventos de teclado
-        document.addEventListener('keydown', function (e) {
-            if (currentSection === 'book-editor') {
-                if (e.key === 'ArrowLeft' && !e.target.matches('textarea, input')) {
-                    previousPage();
-                } else if (e.key === 'ArrowRight' && !e.target.matches('textarea, input')) {
-                    nextPage();
-                }
-            } else if (currentSection === 'book-reader') {
-                if (e.key === 'ArrowLeft') {
-                    readerPreviousPage();
-                } else if (e.key === 'ArrowRight') {
-                    readerNextPage();
-                } else if (e.key === ' ') {
-                    e.preventDefault();
-                    toggleAutoPlay();
-                }
-            }
-        });
-
-        // Controlar música de fondo
-        function toggleBackgroundMusic() {
-            const musicBtn = document.getElementById('music-toggle');
-
-            backgroundMusicEnabled = !backgroundMusicEnabled;
-
-            if (backgroundMusicEnabled) {
-                musicBtn.textContent = '🎵';
-                musicBtn.title = 'Pausar música';
-                // Solo iniciar música si no estamos en editor/lector de libros
-                if (currentSection === 'main-menu' || currentSection === 'library' ||
-                    currentSection === 'my-books' || currentSection === 'book-creator') {
-                    startBackgroundMusic();
-                }
-                playClickSound();
-            } else {
-                musicBtn.textContent = '🔇';
-                musicBtn.title = 'Reproducir música';
-                stopBackgroundMusic();
-                playClickSound();
-            }
+        // Migrar datos antiguos si existen
+        const oldBooks = localStorage.getItem('audioTaleBooks');
+        if (oldBooks && books.length === 0) {
+            books = JSON.parse(oldBooks);
+            saveUserData();
+            localStorage.removeItem('audioTaleBooks');
         }
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+        books = [];
+        userImages = [];
+    }
+}
 
-        // Hacer la app descargable como PWA
-        function makeAppDownloadable() {
-            let deferredPrompt;
-
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-
-                // Mostrar botón de instalación personalizado
-                const installBtn = document.createElement('button');
-                installBtn.id = 'install-btn';
-                installBtn.className = 'install-btn';
-                installBtn.innerHTML = '📱 Instalar App';
-                installBtn.onclick = async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') {
-                            showMascot(`¡Genial ${userName}! Ahora puedes usar AudioTale desde tu dispositivo.`);
-                        }
-                        deferredPrompt = null;
-                        installBtn.style.display = 'none';
-                    }
-                };
-
-                document.body.appendChild(installBtn);
+// Service Worker para PWA (Progressive Web App)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('📱 Service Worker registrado correctamente');
+            })
+            .catch(error => {
+                console.log('❌ Error al registrar Service Worker:', error);
             });
+    });
+}
+
+// Gestión de eventos de teclado
+document.addEventListener('keydown', function (e) {
+    if (currentSection === 'book-editor') {
+        if (e.key === 'ArrowLeft' && !e.target.matches('textarea, input')) {
+            previousPage();
+        } else if (e.key === 'ArrowRight' && !e.target.matches('textarea, input')) {
+            nextPage();
         }
-
-        // Inicializar PWA al cargar la página
-        window.addEventListener('load', () => {
-            makeAppDownloadable();
-        });
-
-        // Forzar actualización de caché en desarrollo
-        if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
-            // Agregar timestamp para evitar caché en desarrollo
-            const timestamp = new Date().getTime();
-            console.log('🔄 Forzando actualización de caché - Timestamp:', timestamp);
+    } else if (currentSection === 'book-reader') {
+        if (e.key === 'ArrowLeft') {
+            readerPreviousPage();
+        } else if (e.key === 'ArrowRight') {
+            readerNextPage();
+        } else if (e.key === ' ') {
+            e.preventDefault();
+            toggleAutoPlay();
         }
+    }
+});
 
-        console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
+// Controlar música de fondo
+function toggleBackgroundMusic() {
+    const musicBtn = document.getElementById('music-toggle');
+
+    backgroundMusicEnabled = !backgroundMusicEnabled;
+
+    if (backgroundMusicEnabled) {
+        musicBtn.textContent = '🎵';
+        musicBtn.title = 'Pausar música';
+        // Solo iniciar música si no estamos en editor/lector de libros
+        if (currentSection === 'main-menu' || currentSection === 'library' ||
+            currentSection === 'my-books' || currentSection === 'book-creator') {
+            startBackgroundMusic();
+        }
+        playClickSound();
+    } else {
+        musicBtn.textContent = '🔇';
+        musicBtn.title = 'Reproducir música';
+        stopBackgroundMusic();
+        playClickSound();
+    }
+}
+
+// Hacer la app descargable como PWA
+function makeAppDownloadable() {
+    let deferredPrompt;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+
+        // Mostrar botón de instalación personalizado
+        const installBtn = document.createElement('button');
+        installBtn.id = 'install-btn';
+        installBtn.className = 'install-btn';
+        installBtn.innerHTML = '📱 Instalar App';
+        installBtn.onclick = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showMascot(`¡Genial ${userName}! Ahora puedes usar AudioTale desde tu dispositivo.`);
+                }
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            }
+        };
+
+        document.body.appendChild(installBtn);
+    });
+}
+
+// Inicializar PWA al cargar la página
+window.addEventListener('load', () => {
+    makeAppDownloadable();
+});
+
+// Forzar actualización de caché en desarrollo
+if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
+    // Agregar timestamp para evitar caché en desarrollo
+    const timestamp = new Date().getTime();
+    console.log('🔄 Forzando actualización de caché - Timestamp:', timestamp);
+}
+
+console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
+
 
