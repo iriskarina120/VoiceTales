@@ -1,3 +1,4 @@
+
 // AudioTale - Aplicación de cuentos interactivos
 // Desarrollado con HTML, CSS y JavaScript
 
@@ -519,12 +520,15 @@ function setupEventListeners() {
 
     // Editor
     document.getElementById('editor-back-btn').addEventListener('click', () => {
-        tryExitBookEditor(showMainMenu);
+        if (unsavedChanges) {
+            showUnsavedChangesPopup(() => {
+                unsavedChanges = false;
+                showMainMenu();
+            });
+        } else {
+            showMainMenu();
+        }
     });
-    // Interceptar otros cambios de sección desde el editor
-    document.getElementById('library-btn').addEventListener('click', () => { tryExitBookEditor(showLibrary); });
-    document.getElementById('my-books-btn').addEventListener('click', () => { tryExitBookEditor(showMyBooks); });
-    document.getElementById('create-btn').addEventListener('click', () => { tryExitBookEditor(showBookCreator); });
     document.getElementById('save-book-btn').addEventListener('click', saveCurrentBook);
     document.getElementById('prev-page-btn').addEventListener('click', previousPage);
     document.getElementById('next-page-btn').addEventListener('click', nextPage);
@@ -610,11 +614,6 @@ function showBookEditor(book) {
 }
 
 function showBookReader(book) {
-    // Si estamos en el editor, interceptar salida
-    if (currentSection === 'book-editor') {
-        tryExitBookEditor(() => showBookReader(book));
-        return;
-    }
     hideAllSections();
     document.getElementById('book-reader').classList.remove('hidden');
     currentSection = 'book-reader';
@@ -627,26 +626,6 @@ function showBookReader(book) {
     // Detener música de fondo en lector
     stopBackgroundMusic();
     displayReaderPages();
-
-    // Función para controlar la salida del editor de libros
-    function tryExitBookEditor(goToSectionFn) {
-        // Si estamos grabando, detener grabación antes de salir
-        if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            isRecording = false;
-            const recordBtn = document.getElementById('record-btn');
-            recordBtn.textContent = '🎤 Grabar';
-            recordBtn.classList.remove('recording');
-        }
-        if (currentSection === 'book-editor' && unsavedChanges) {
-            showUnsavedChangesPopup(() => {
-                unsavedChanges = false;
-                goToSectionFn();
-            });
-        } else {
-            goToSectionFn();
-        }
-    }
 }
 
 function hideAllSections() {
@@ -1852,23 +1831,4 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 }
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
-function saveBook() {
-    if (!currentBook) {
-        showMascot(`¡${userName}! No tienes un libro abierto para guardar.`);
-        return;
-    }
-
-    // Verificar si hay cambios sin guardar
-    if (currentBook.isSaved && !currentBook.isTemplate) {
-        showMascot(`¡${userName}! Tu libro "${currentBook.title}" ya está guardado.`);
-        return;
-    }
-
-    // Confirmación de salida si hay cambios sin guardar
-    if (!currentBook.isSaved) {
-        const popup = document.createElement('div');
-        popup.id = 'save-confirmation-popup';
-        popup.style.position = 'fixed';
-        popup.style.top = '0';
-        popup.style.left = '0';
 
