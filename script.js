@@ -3,6 +3,7 @@
 // Desarrollado con HTML, CSS y JavaScript
 
 // Variables globales
+let unsavedChanges = false; // Control de cambios no guardados
 let currentSection = 'loading'; // Sección actual
 let currentBook = null; // Libro actual en edición/lectura
 let currentPage = 0; // Página actual
@@ -519,7 +520,12 @@ function setupEventListeners() {
 
     // Editor
     document.getElementById('editor-back-btn').addEventListener('click', () => {
-        if (confirm('¿Estás seguro de que quieres salir? Los cambios no guardados se perderán.')) {
+        if (unsavedChanges) {
+            showUnsavedChangesPopup(() => {
+                unsavedChanges = false;
+                showMainMenu();
+            });
+        } else {
             showMainMenu();
         }
     });
@@ -796,6 +802,7 @@ function displayCurrentPage() {
     textInput.value = page.text || '';
     textInput.oninput = () => {
         currentBook.pages[currentPage].text = textInput.value;
+        unsavedChanges = true;
     };
 
     // Actualizar contador de páginas
@@ -897,6 +904,7 @@ async function toggleRecording() {
                     stream.getTracks().forEach(track => track.stop());
                     // Guardar automáticamente el libro para no perder el audio
                     saveCurrentBook();
+                    unsavedChanges = false;
                     // Log para depuración
                     console.log('🎤 Audio guardado en página', currentPage, dataUrl ? dataUrl.substring(0, 50) + '...' : 'null');
                 };
@@ -936,12 +944,49 @@ function deletePageAudio() {
     if (confirm('¿Estás seguro de que quieres eliminar el audio de esta página?')) {
         currentBook.pages[currentPage].audio = null;
         updateAudioControls();
+        unsavedChanges = true;
     }
 }
 
 // Guardar libro
 function saveCurrentBook() {
     if (!currentBook) return;
+    unsavedChanges = false;
+
+    // Popup visual y amigable para niños sobre cambios no guardados
+    function showUnsavedChangesPopup(onConfirm) {
+        // Si ya existe, no crear otro
+        if (document.getElementById('unsaved-popup')) return;
+        const popup = document.createElement('div');
+        popup.id = 'unsaved-popup';
+        popup.style.position = 'fixed';
+        popup.style.top = '0';
+        popup.style.left = '0';
+        popup.style.width = '100vw';
+        popup.style.height = '100vh';
+        popup.style.background = 'rgba(0,0,0,0.4)';
+        popup.style.display = 'flex';
+        popup.style.alignItems = 'center';
+        popup.style.justifyContent = 'center';
+        popup.style.zIndex = '9999';
+        popup.innerHTML = `
+        <div style="background: #fffbe7; border-radius: 24px; box-shadow: 0 4px 24px #0002; padding: 2.5rem 2rem; max-width: 350px; text-align: center; border: 4px solid #ffe082;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🧙‍♂️</div>
+            <h2 style="color: #4a90e2; margin-bottom: 0.5rem;">¡Espera, ${userName}!</h2>
+            <p style="font-size: 1.1rem; color: #333; margin-bottom: 1.2rem;">Tienes cambios mágicos sin guardar en tu cuento.<br>¿Quieres salir y perderlos?</p>
+            <button id="popup-continue" style="background: #4a90e2; color: #fff; border: none; border-radius: 8px; padding: 0.7rem 1.5rem; font-size: 1.1rem; margin-right: 1rem; cursor: pointer;">Salir sin guardar</button>
+            <button id="popup-cancel" style="background: #fff; color: #4a90e2; border: 2px solid #4a90e2; border-radius: 8px; padding: 0.7rem 1.5rem; font-size: 1.1rem; cursor: pointer;">Seguir editando</button>
+        </div>
+    `;
+        document.body.appendChild(popup);
+        document.getElementById('popup-continue').onclick = () => {
+            document.body.removeChild(popup);
+            if (onConfirm) onConfirm();
+        };
+        document.getElementById('popup-cancel').onclick = () => {
+            document.body.removeChild(popup);
+        };
+    }
 
     // Detener grabación si está activa
     if (isRecording) {
