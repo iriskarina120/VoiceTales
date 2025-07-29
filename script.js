@@ -891,9 +891,14 @@ async function toggleRecording() {
                 // Guardar audio como base64 (DataURL) para persistencia
                 const reader = new FileReader();
                 reader.onloadend = function () {
-                    currentBook.pages[currentPage].audio = reader.result; // DataURL
+                    const dataUrl = reader.result;
+                    currentBook.pages[currentPage].audio = dataUrl; // DataURL
                     updateAudioControls();
                     stream.getTracks().forEach(track => track.stop());
+                    // Guardar automáticamente el libro para no perder el audio
+                    saveCurrentBook();
+                    // Log para depuración
+                    console.log('🎤 Audio guardado en página', currentPage, dataUrl ? dataUrl.substring(0, 50) + '...' : 'null');
                 };
                 reader.readAsDataURL(audioBlob);
             };
@@ -1653,8 +1658,15 @@ function loadUserData() {
             books.forEach(book => {
                 if (book.pages && Array.isArray(book.pages)) {
                     book.pages.forEach(page => {
-                        if (page.audio && typeof page.audio === 'string' && page.audio.startsWith('blob:')) {
-                            page.audio = null;
+                        // Solo borrar audios que sean blob:, no los que sean data:audio
+                        if (page.audio && typeof page.audio === 'string') {
+                            if (page.audio.startsWith('blob:')) {
+                                console.log('🧹 Migrando audio blob: a null en página', page);
+                                page.audio = null;
+                            } else if (page.audio.startsWith('data:audio')) {
+                                // Audio válido, log para depuración
+                                console.log('✅ Audio base64 detectado en página', page);
+                            }
                         }
                     });
                 }
