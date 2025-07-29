@@ -1,4 +1,3 @@
-
 // AudioTale - Aplicación de cuentos interactivos
 // Desarrollado con HTML, CSS y JavaScript
 
@@ -1853,3 +1852,23 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 }
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
+function saveBook() {
+    if (!currentBook) {
+        showMascot(`¡${userName}! No tienes un libro abierto para guardar.`);
+        return;
+    }
+
+    // Verificar si hay cambios sin guardar
+    if (currentBook.isSaved && !currentBook.isTemplate) {
+        showMascot(`¡${userName}! Tu libro "${currentBook.title}" ya está guardado.`);
+        return;
+    }
+
+    // Confirmación de salida si hay cambios sin guardar
+    if (!currentBook.isSaved) {
+        const popup = document.createElement('div');
+        popup.id = 'save-confirmation-popup';
+        popup.style.position = 'fixed';
+        popup.style.top = '0';
+        popup.style.left = '0';
+
