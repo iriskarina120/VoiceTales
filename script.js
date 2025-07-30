@@ -1423,8 +1423,8 @@ async function createBookVideo(book) {
 
         // ...
 
-        // Dibuja el libro cerrado (portada)
-        function drawClosedBook(coverImg, title, author, desc) {
+        // Dibuja el libro cerrado (portada/contraportada) y espera a que la imagen cargue
+        async function drawClosedBook(coverImg, title, author, desc) {
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // Sombra libro
@@ -1436,10 +1436,14 @@ async function createBookVideo(book) {
             // Imagen portada
             if (coverImg) {
                 const img = new Image();
-                img.onload = () => {
-                    ctx.drawImage(img, canvas.width/2-180, 160, 360, 220);
-                };
-                img.src = coverImg;
+                await new Promise(res => {
+                    img.onload = () => {
+                        ctx.drawImage(img, canvas.width/2-180, 160, 360, 220);
+                        res();
+                    };
+                    img.onerror = res;
+                    img.src = coverImg;
+                });
             }
             // Título
             ctx.font = 'bold 40px "Comic Sans MS", cursive';
@@ -1615,7 +1619,7 @@ async function createBookVideo(book) {
 
         async function renderBookPages() {
             // 1. Libro cerrado (portada)
-            drawClosedBook(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
+            await drawClosedBook(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
             await new Promise(r=>setTimeout(r, 1500));
 
             // 2. Animación de apertura
@@ -1662,12 +1666,12 @@ async function createBookVideo(book) {
                 ctx.globalAlpha = 1-t;
                 await drawOpenBook(prevLeft, prevRight, prevLeftText, prevRightText);
                 ctx.globalAlpha = t;
-                drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, pages[pages.length-1].desc);
+                await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, pages[pages.length-1].desc);
                 ctx.restore();
                 await new Promise(r=>setTimeout(r,20));
             }
             // Contraportada con fecha
-            drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, 'Última edición: '+(pages[pages.length-1].lastEdit||''));
+            await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, 'Última edición: '+(pages[pages.length-1].lastEdit||''));
             await new Promise(r=>setTimeout(r, 1500));
 
             setTimeout(() => {
