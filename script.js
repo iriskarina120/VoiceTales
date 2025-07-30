@@ -1251,9 +1251,10 @@ function updateReadingProgress() {
 // Creador de libros
 function initializeCreator() {
     document.getElementById('book-title-input').value = '';
+    let authorInput = document.getElementById('book-author-input');
+    if (authorInput) authorInput.value = '';
     document.getElementById('book-description').value = '';
     document.getElementById('page-creator').innerHTML = '';
-
     // Agregar páginas iniciales
     for (let i = 0; i < 3; i++) {
         addNewPage();
@@ -1279,6 +1280,7 @@ function addNewPage() {
         <div class="image-preview" id="preview-${pageCount}" style="display: none; margin: 1rem 0;">
             <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount}">
         </div>
+        <button class="cover-btn" id="cover-btn-${pageCount}" style="margin-bottom:0.5rem;display:block;" onclick="setAsCover(${pageCount - 1})">Usar como portada</button>
         <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount}">
             <div class="gallery-content">
                 <h4>Selecciona una imagen</h4>
@@ -1299,6 +1301,19 @@ function addNewPage() {
             </div>
         </div>
     `;
+// Permitir marcar una página como portada
+function setAsCover(pageIndex) {
+    if (!window.tempBookPages || !window.tempBookPages[pageIndex]) return;
+    // Mover la página seleccionada al inicio del arreglo
+    const page = window.tempBookPages.splice(pageIndex, 1)[0];
+    window.tempBookPages.unshift(page);
+    // Actualizar botones visualmente
+    const allBtns = document.querySelectorAll('.cover-btn');
+    allBtns.forEach(btn => btn.textContent = 'Usar como portada');
+    const btn = document.getElementById(`cover-btn-${pageIndex+1}`);
+    if (btn) btn.textContent = 'Portada seleccionada';
+    showMascot('¡Has seleccionado la portada de tu libro!');
+}
 
     container.appendChild(pageDiv);
 }
@@ -1358,7 +1373,9 @@ function handleImageUpload(input, pageIndex) {
 function createNewBook() {
     const title = document.getElementById('book-title-input').value.trim();
     const description = document.getElementById('book-description').value.trim();
-    let author = (typeof userName === 'string' && userName.trim()) ? userName.trim() : 'Autor desconocido';
+    // Tomar autor del input
+    let authorInput = document.getElementById('book-author-input');
+    let author = (authorInput && authorInput.value.trim()) ? authorInput.value.trim() : ((typeof userName === 'string' && userName.trim()) ? userName.trim() : 'Autor desconocido');
 
     if (!title) {
         playErrorSound();
