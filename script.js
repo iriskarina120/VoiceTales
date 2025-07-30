@@ -1358,6 +1358,7 @@ function handleImageUpload(input, pageIndex) {
 function createNewBook() {
     const title = document.getElementById('book-title-input').value.trim();
     const description = document.getElementById('book-description').value.trim();
+    let author = (typeof userName === 'string' && userName.trim()) ? userName.trim() : 'Autor desconocido';
 
     if (!title) {
         playErrorSound();
@@ -1365,17 +1366,34 @@ function createNewBook() {
         return;
     }
 
-    if (!window.tempBookPages || window.tempBookPages.length === 0) {
+    if (!window.tempBookPages || !Array.isArray(window.tempBookPages) || window.tempBookPages.length === 0) {
         playErrorSound();
         showMascot(`¡${userName}! Necesitas agregar al menos una imagen de fondo para comenzar.`);
         return;
     }
 
+    // Validar que la primera página tenga imagen (portada)
+    const portada = window.tempBookPages[0];
+    if (!portada || !portada.background) {
+        playErrorSound();
+        showMascot(`¡${userName}! Debes seleccionar una imagen para la portada (primera página).`);
+        return;
+    }
+
+    // Asegurar que cada página tenga al menos el campo background y text
+    const pages = window.tempBookPages
+        .filter(page => page && typeof page.background === 'string' && page.background.length > 0)
+        .map(page => ({
+            background: page.background,
+            text: typeof page.text === 'string' ? page.text : ''
+        }));
+
     const newBook = {
         id: 'custom_' + Date.now(),
         title: title,
         description: description || 'Mi libro personalizado',
-        pages: window.tempBookPages.filter(page => page), // Filtrar páginas vacías
+        author: author,
+        pages: pages,
         isTemplate: false
     };
 
@@ -1851,7 +1869,20 @@ function loadUserData() {
             userImages = userData.userImages || [];
             // Migrar audios antiguos (blob:) a null para evitar referencias rotas
             books.forEach(book => {
-                if (book.pages && Array.isArray(book.pages)) {
+                // Asegurar campos esenciales
+                if (!book.author || typeof book.author !== 'string') {
+                    book.author = 'Autor desconocido';
+                }
+                if (!book.description || typeof book.description !== 'string') {
+                    book.description = 'Mi libro personalizado';
+                }
+                if (book.pages && Array.isArray(book.pages) && book.pages.length > 0) {
+                    // Asegurar que la portada tenga imagen
+                    if (!book.pages[0] || typeof book.pages[0] !== 'object') {
+                        book.pages[0] = { background: '', text: '' };
+                    } else if (!book.pages[0].background) {
+                        book.pages[0].background = '';
+                    }
                     book.pages.forEach(page => {
                         // Solo borrar audios que sean blob:, no los que sean data:audio
                         if (page.audio && typeof page.audio === 'string') {
@@ -1863,6 +1894,9 @@ function loadUserData() {
                                 console.log('✅ Audio base64 detectado en página', page);
                             }
                         }
+                        // Asegurar campos mínimos
+                        if (!('text' in page)) page.text = '';
+                        if (!('background' in page)) page.background = '';
                     });
                 }
             });
