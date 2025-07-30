@@ -643,7 +643,8 @@ function renderBookAsFlipBook() {
     const pagesDiv = document.createElement('div');
     pagesDiv.className = 'pages';
 
-    // Portada
+
+    // Portada (primera página)
     const portada = document.createElement('div');
     portada.className = 'page';
     portada.id = 'portada';
@@ -651,25 +652,41 @@ function renderBookAsFlipBook() {
     portada.innerHTML = `
         <p id="name">${currentBook.title || ''}</p>
         <p id="title">${currentBook.description || ''}</p>
-        <p id="autor">${currentBook.author || ''}</p>
+        <p id="autor">${currentBook.author ? currentBook.author : ''}</p>
     `;
     pagesDiv.appendChild(portada);
 
-    // Páginas del cuento (pares: 0,1 ...)
-    for (let i = 1; i < currentBook.pages.length; i++) {
+    // Páginas del cuento (del 1 a la penúltima)
+    for (let i = 1; i < currentBook.pages.length - 1; i++) {
         const page = currentBook.pages[i];
         const pageDiv = document.createElement('div');
         pageDiv.className = 'page';
         pageDiv.id = `page${i}`;
         pageDiv.style.backgroundImage = `url('${page.background}')`;
-        // Si es la última página, imprime la fecha de edición
-        if (i === currentBook.pages.length - 1) {
-            pageDiv.innerHTML = `<p id="publicacion">${currentBook.lastEdit ? 'Editado: ' + currentBook.lastEdit : ''}</p>`;
-        } else {
-            // Imprime el texto de la página si existe
-            pageDiv.innerHTML = page.text ? `<div class="page-text-content">${page.text}</div>` : '';
+        // Imprime el texto de la página si existe
+        let pageText = '';
+        if (page.text && page.text.trim() !== '') {
+            pageText = `<div class="page-text-content">${page.text}</div>`;
         }
+        pageDiv.innerHTML = pageText;
         pagesDiv.appendChild(pageDiv);
+    }
+
+    // Contraportada (última página)
+    if (currentBook.pages.length > 1) {
+        const lastIdx = currentBook.pages.length - 1;
+        const lastPage = currentBook.pages[lastIdx];
+        const contraportada = document.createElement('div');
+        contraportada.className = 'page';
+        contraportada.id = `page${lastIdx}`;
+        contraportada.style.backgroundImage = `url('${lastPage.background}')`;
+        // Fecha de edición y lugar si existen
+        let pubText = '';
+        if (currentBook.lastEdit || currentBook.publicationPlace) {
+            pubText = `<p id="publicacion">${currentBook.lastEdit ? 'Editado: ' + currentBook.lastEdit : ''}${currentBook.lastEdit && currentBook.publicationPlace ? '<br>' : ''}${currentBook.publicationPlace ? currentBook.publicationPlace : ''}</p>`;
+        }
+        contraportada.innerHTML = pubText;
+        pagesDiv.appendChild(contraportada);
     }
 
     bookDiv.appendChild(pagesDiv);
