@@ -1284,25 +1284,32 @@ function initializeCreator() {
 
 function addNewPage() {
     const container = document.getElementById('page-creator');
-    const pageCount = container.children.length + 1;
+    const pageCount = container.children.length;
 
     const pageDiv = document.createElement('div');
     pageDiv.className = 'page-creator-item';
 
+    // La primera imagen es la portada, las siguientes son páginas 1, 2, ...
+    let pageLabel = '';
+    if (pageCount === 0) {
+        pageLabel = 'Portada';
+    } else {
+        pageLabel = `Página ${pageCount}`;
+    }
+
     pageDiv.innerHTML = `
-        <h4>Página ${pageCount}</h4>
+        <h4>${pageLabel}</h4>
         <div class="image-selection">
             <div class="image-upload">
-                <label for="page-image-${pageCount}">📷 Subir imagen propia</label>
-                <input type="file" id="page-image-${pageCount}" accept="image/*" onchange="handleImageUpload(this, ${pageCount - 1})">
+                <label for="page-image-${pageCount+1}">📷 Subir imagen propia</label>
+                <input type="file" id="page-image-${pageCount+1}" accept="image/*" onchange="handleImageUpload(this, ${pageCount})">
             </div>
-            <button class="gallery-btn" onclick="showImageGallery(${pageCount - 1})">🖼️ Galería de imágenes</button>
+            <button class="gallery-btn" onclick="showImageGallery(${pageCount})">🖼️ Galería de imágenes</button>
         </div>
-        <div class="image-preview" id="preview-${pageCount}" style="display: none; margin: 1rem 0;">
-            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount}">
+        <div class="image-preview" id="preview-${pageCount+1}" style="display: none; margin: 1rem 0;">
+            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount+1}">
         </div>
-        <button class="cover-btn" id="cover-btn-${pageCount}" style="margin-bottom:0.5rem;display:block;" onclick="setAsCover(${pageCount - 1})">Usar como portada</button>
-        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount}">
+        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount+1}">
             <div class="gallery-content">
                 <h4>Selecciona una imagen</h4>
                 <div class="gallery-categories">
@@ -1311,30 +1318,17 @@ function addNewPage() {
                             <h5>${category.charAt(0).toUpperCase() + category.slice(1)}</h5>
                             <div class="gallery-images">
                                 ${images.map(img => `
-                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount - 1}, ${pageCount})" 
+                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount}, ${pageCount+1})" 
                                          style="width: 80px; height: 60px; object-fit: cover; margin: 5px; cursor: pointer; border-radius: 5px;">
                                 `).join('')}
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <button onclick="closeImageGallery(${pageCount})">Cerrar</button>
+                <button onclick="closeImageGallery(${pageCount+1})">Cerrar</button>
             </div>
         </div>
     `;
-// Permitir marcar una página como portada
-function setAsCover(pageIndex) {
-    if (!window.tempBookPages || !window.tempBookPages[pageIndex]) return;
-    // Mover la página seleccionada al inicio del arreglo
-    const page = window.tempBookPages.splice(pageIndex, 1)[0];
-    window.tempBookPages.unshift(page);
-    // Actualizar botones visualmente
-    const allBtns = document.querySelectorAll('.cover-btn');
-    allBtns.forEach(btn => btn.textContent = 'Usar como portada');
-    const btn = document.getElementById(`cover-btn-${pageIndex+1}`);
-    if (btn) btn.textContent = 'Portada seleccionada';
-    showMascot('¡Has seleccionado la portada de tu libro!');
-}
 
     container.appendChild(pageDiv);
 }
