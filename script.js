@@ -717,7 +717,8 @@ function createUserBookCard(book, index) {
 
     const cover = document.createElement('div');
     cover.className = 'book-cover';
-    cover.style.backgroundImage = `url(${book.pages[0].background})`;
+    // Siempre usar la primera imagen como portada
+    cover.style.backgroundImage = `url(${book.pages && book.pages[0] && book.pages[0].background ? book.pages[0].background : ''})`;
     cover.onclick = () => showBookReader(book);
 
     const info = document.createElement('div');
@@ -726,6 +727,10 @@ function createUserBookCard(book, index) {
     const title = document.createElement('h3');
     title.className = 'book-title';
     title.textContent = book.title;
+
+    const author = document.createElement('p');
+    author.className = 'book-author';
+    author.textContent = `Autor: ${book.author || 'Autor desconocido'}`;
 
     const description = document.createElement('p');
     description.className = 'book-description';
@@ -760,6 +765,7 @@ function createUserBookCard(book, index) {
     actions.appendChild(deleteBtn);
 
     info.appendChild(title);
+    info.appendChild(author);
     info.appendChild(description);
     info.appendChild(actions);
     card.appendChild(cover);
