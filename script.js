@@ -1401,158 +1401,187 @@ async function createBookVideo(book) {
         showMascot(`${userName}, estoy preparando tu video mágico... ¡Esto puede tomar unos momentos!`, 3000);
         playMagicSound();
 
-        // Crear canvas para el video
+        // Canvas y contexto
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 1920;
-        canvas.height = 1080;
+        canvas.width = 1280;
+        canvas.height = 720;
 
-        // Configurar MediaRecorder para capturar canvas
-        const stream = canvas.captureStream(30); // 30 FPS
+        // MediaRecorder para capturar el canvas
+        const stream = canvas.captureStream(30);
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        // Crear pista de audio para el video
         const audioDestination = audioContext.createMediaStreamDestination();
         stream.addTrack(audioDestination.stream.getAudioTracks()[0]);
-
-        const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9,opus'
-        });
-
+        const videoRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
         const chunks = [];
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                chunks.push(event.data);
-            }
-        };
-
-        mediaRecorder.onstop = () => {
+        videoRecorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+        videoRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             downloadVideoBlob(blob, book.title);
         };
+        videoRecorder.start();
 
-        // Comenzar grabación
-        mediaRecorder.start();
+        // Utilidades visuales
+        function drawBookFrame() {
+            // Fondo libro abierto
+            ctx.fillStyle = '#f5e6c8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Sombra central
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.fillRect(canvas.width / 2 - 10, 40, 20, canvas.height - 80);
+            // Borde
+            ctx.strokeStyle = '#bfa76f';
+            ctx.lineWidth = 12;
+            ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+        }
 
-        // Función para renderizar cada página
-        async function renderPage(pageIndex) {
-            return new Promise((resolve) => {
-                const page = book.pages[pageIndex];
-
-                // Limpiar canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Cargar imagen de fondo
+        function drawPageImage(imgUrl, side = 'right') {
+            return new Promise(resolve => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.onload = () => {
-                    // Dibujar fondo
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    // Agregar overlay semitransparente
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    // Agregar título del libro en la primera página
-                    if (pageIndex === 0) {
-                        ctx.font = 'bold 80px "Comic Sans MS", cursive';
-                        ctx.fillStyle = '#333';
-                        ctx.textAlign = 'center';
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 4;
-                        ctx.strokeText(book.title, canvas.width / 2, 200);
-                        ctx.fillText(book.title, canvas.width / 2, 200);
-                    }
-
-                    // Agregar texto de la página
-                    if (page.text) {
-                        ctx.font = 'bold 48px "Comic Sans MS", cursive';
-                        ctx.fillStyle = '#333';
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 3;
-                        ctx.textAlign = 'center';
-
-                        const words = page.text.split(' ');
-                        const lines = [];
-                        let currentLine = '';
-
-                        words.forEach(word => {
-                            const testLine = currentLine + word + ' ';
-                            const metrics = ctx.measureText(testLine);
-                            if (metrics.width > canvas.width - 200 && currentLine !== '') {
-                                lines.push(currentLine);
-                                currentLine = word + ' ';
-                            } else {
-                                currentLine = testLine;
-                            }
-                        });
-                        lines.push(currentLine);
-
-                        const startY = canvas.height - 300;
-                        lines.forEach((line, index) => {
-                            const y = startY + (index * 60);
-                            ctx.strokeText(line, canvas.width / 2, y);
-                            ctx.fillText(line, canvas.width / 2, y);
-                        });
-                    }
-
-                    // Agregar número de página
-                    ctx.font = 'bold 36px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#666';
-                    ctx.textAlign = 'right';
-                    ctx.fillText(`Página ${pageIndex + 1}`, canvas.width - 50, canvas.height - 50);
-
-                    // Agregar logo de AudioTale
-                    ctx.font = 'bold 32px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#4a90e2';
-                    ctx.textAlign = 'left';
-                    ctx.fillText('🎧 AudioTale', 50, canvas.height - 50);
-
+                    // Página izquierda o derecha
+                    const x = side === 'left' ? 60 : canvas.width / 2 + 10;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, 60);
+                    ctx.lineTo(x + canvas.width / 2 - 70, 60);
+                    ctx.lineTo(x + canvas.width / 2 - 70, canvas.height - 60);
+                    ctx.lineTo(x, canvas.height - 60);
+                    ctx.closePath();
+                    ctx.clip();
+                    ctx.drawImage(img, x, 60, canvas.width / 2 - 70, canvas.height - 120);
+                    ctx.restore();
                     resolve();
                 };
-
-                img.onerror = () => {
-                    // Si no se puede cargar la imagen, usar color sólido
-                    ctx.fillStyle = '#667eea';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    resolve();
-                };
-
-                img.src = page.background;
+                img.onerror = () => resolve();
+                img.src = imgUrl;
             });
         }
 
-        // Renderizar cada página por 3 segundos
-        let currentPageIndex = 0;
+        function drawPageText(text, side = 'right') {
+            ctx.save();
+            ctx.font = 'bold 32px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 4;
+            const x = side === 'left' ? canvas.width / 4 : 3 * canvas.width / 4;
+            const y = canvas.height - 120;
+            // Dividir texto en líneas
+            const maxWidth = canvas.width / 2 - 100;
+            let words = (text || '').split(' '), line = '', lines = [];
+            for (let w of words) {
+                let test = line + w + ' ';
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    lines.push(line); line = w + ' ';
+                } else { line = test; }
+            }
+            if (line) lines.push(line);
+            lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + 40 * i));
+            ctx.restore();
+        }
 
-        async function renderNextPage() {
-            if (currentPageIndex < book.pages.length) {
-                await renderPage(currentPageIndex);
-
-                // Reproducir audio de la página si existe
-                if (book.pages[currentPageIndex].audio) {
-                    const audio = new Audio(book.pages[currentPageIndex].audio);
-                    const audioSource = audioContext.createMediaElementSource(audio);
-                    audioSource.connect(audioDestination);
-                    audio.play().catch(e => console.log('Error reproduciendo audio:', e));
-                }
-
-                currentPageIndex++;
-                setTimeout(renderNextPage, 4000); // 4 segundos por página
-            } else {
-                // Finalizar grabación
-                setTimeout(() => {
-                    mediaRecorder.stop();
-                    audioContext.close();
-                    playSuccessSound();
-                    showMascot(`¡Increíble ${userName}! Tu video está listo para descargar y compartir.`, 4000);
-                }, 1000);
+        // Animación de cambio de página (1s)
+        async function animatePageTurn(fromImg, toImg, fromText, toText) {
+            for (let t = 0; t <= 1; t += 0.05) {
+                drawBookFrame();
+                if (fromImg) await drawPageImage(fromImg, 'left');
+                ctx.save();
+                ctx.globalAlpha = 1 - t;
+                if (fromImg) await drawPageImage(fromImg, 'right');
+                ctx.globalAlpha = t;
+                if (toImg) await drawPageImage(toImg, 'right');
+                ctx.globalAlpha = 1;
+                ctx.restore();
+                if (fromText) drawPageText(fromText, 'left');
+                if (fromText) drawPageText(fromText, 'right');
+                if (toText) drawPageText(toText, 'right');
+                await new Promise(r => setTimeout(r, 50));
             }
         }
 
-        // Comenzar renderizado
-        renderNextPage();
+        // Portada y contraportada especiales
+        const lastEdit = book.lastEdit || new Date().toLocaleDateString();
+        const author = book.author || userName || 'Autor desconocido';
+        const pages = [
+            { type: 'cover', img: book.pages[0]?.background, text: book.title, desc: book.description, author },
+            ...book.pages.map((p, i) => ({ type: 'page', img: p.background, text: p.text, audio: p.audio, idx: i })),
+            { type: 'back', img: book.pages[book.pages.length - 1]?.background, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author, lastEdit }
+        ];
 
+        async function renderBookPages() {
+            let prevImg = null, prevText = '';
+            for (let i = 0; i < pages.length; i++) {
+                drawBookFrame();
+                if (i === 0) { // Portada
+                    await drawPageImage(pages[i].img, 'right');
+                    ctx.save();
+                    ctx.font = 'bold 64px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#fff';
+                    ctx.shadowBlur = 8;
+                    ctx.fillText(pages[i].text, 3 * canvas.width / 4, 200);
+                    ctx.font = '32px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#333';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(pages[i].desc || '', 3 * canvas.width / 4, 260);
+                    ctx.font = '28px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText('Autor: ' + pages[i].author, 3 * canvas.width / 4, 320);
+                    ctx.restore();
+                    await new Promise(r => setTimeout(r, 2000));
+                } else if (i === pages.length - 1) { // Contraportada
+                    await drawPageImage(pages[i].img, 'left');
+                    ctx.save();
+                    ctx.font = 'bold 64px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = '#fff';
+                    ctx.shadowBlur = 8;
+                    ctx.fillText(pages[i].text, canvas.width / 4, 200);
+                    ctx.font = '32px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#333';
+                    ctx.shadowBlur = 0;
+                    ctx.fillText(pages[i].desc || '', canvas.width / 4, 260);
+                    ctx.font = '28px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText('Autor: ' + pages[i].author, canvas.width / 4, 320);
+                    ctx.font = '24px "Comic Sans MS", cursive';
+                    ctx.fillStyle = '#888';
+                    ctx.fillText('Última edición: ' + pages[i].lastEdit, canvas.width / 4, 370);
+                    ctx.restore();
+                    await new Promise(r => setTimeout(r, 2000));
+                } else {
+                    await animatePageTurn(prevImg, pages[i].img, prevText, pages[i].text);
+                    drawBookFrame();
+                    await drawPageImage(pages[i].img, 'right');
+                    drawPageText(pages[i].text, 'right');
+                    if (pages[i].audio) {
+                        const audio = new Audio(pages[i].audio);
+                        const audioSource = audioContext.createMediaElementSource(audio);
+                        audioSource.connect(audioDestination);
+                        await new Promise(res => {
+                            audio.onended = res;
+                            audio.play().catch(() => res());
+                        });
+                    } else {
+                        await new Promise(r => setTimeout(r, 3500));
+                    }
+                }
+                prevImg = pages[i].img;
+                prevText = pages[i].text;
+            }
+            setTimeout(() => {
+                videoRecorder.stop();
+                audioContext.close();
+                playSuccessSound();
+                showMascot(`¡Increíble ${userName}! Tu libro animado está listo para descargar y compartir.`, 4000);
+            }, 1000);
+        }
+
+        await renderBookPages();
     } catch (error) {
         console.error('Error creando video:', error);
         playErrorSound();
