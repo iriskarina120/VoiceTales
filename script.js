@@ -520,6 +520,10 @@ function setupEventListeners() {
 
     // Editor
     document.getElementById('editor-back-btn').addEventListener('click', () => {
+        // Si está grabando, detener y guardar automáticamente
+        if (isRecording && currentSection === 'book-editor') {
+            stopRecordingAutomatically();
+        }
         if (unsavedChanges) {
             showUnsavedChangesPopup(() => {
                 unsavedChanges = false;
@@ -532,7 +536,14 @@ function setupEventListeners() {
     document.getElementById('save-book-btn').addEventListener('click', saveCurrentBook);
     document.getElementById('prev-page-btn').addEventListener('click', previousPage);
     document.getElementById('next-page-btn').addEventListener('click', nextPage);
-    document.getElementById('record-btn').addEventListener('click', toggleRecording);
+    document.getElementById('record-btn').addEventListener('click', () => {
+        // Solo permitir grabar en la sección de edición
+        if (currentSection === 'book-editor') {
+            toggleRecording();
+        } else {
+            showMascot('Solo puedes grabar audio mientras editas un libro.');
+        }
+    });
     document.getElementById('play-btn').addEventListener('click', playPageAudio);
     document.getElementById('delete-audio-btn').addEventListener('click', deletePageAudio);
 
@@ -613,132 +624,19 @@ function showBookEditor(book) {
     displayCurrentPage();
 }
 
-
 function showBookReader(book) {
     hideAllSections();
     document.getElementById('book-reader').classList.remove('hidden');
     currentSection = 'book-reader';
     currentBook = book;
+    currentPage = -1; // Empezar en -1 para mostrar portada
     isReadingBook = true;
     autoPlayMode = true;
     document.getElementById('reader-title').textContent = book.title;
     playClickSound();
+    // Detener música de fondo en lector
     stopBackgroundMusic();
-    renderBookAsFlipBook();
-}
-
-// Renderiza el libro en modo flipbook con la apariencia de la maqueta
-function renderBookAsFlipBook() {
-    const readerContainer = document.getElementById('book-reader');
-    // Elimina cualquier flipbook anterior
-    let oldBook = document.getElementById('flipbook-container');
-    if (oldBook) oldBook.remove();
-
-    // Crea el contenedor principal
-    const bookDiv = document.createElement('div');
-    bookDiv.className = 'book';
-    bookDiv.id = 'flipbook-container';
-
-    // Crea el contenedor de páginas
-    const pagesDiv = document.createElement('div');
-    pagesDiv.className = 'pages';
-
-
-    // Portada (primera página)
-    const portada = document.createElement('div');
-    portada.className = 'page';
-    portada.id = 'portada';
-    portada.style.backgroundImage = `url('${currentBook.pages[0].background}')`;
-    portada.innerHTML = `
-        <p id="name">${currentBook.title || ''}</p>
-        <p id="title">${currentBook.description || ''}</p>
-        <p id="autor">${currentBook.author ? currentBook.author : ''}</p>
-    `;
-    pagesDiv.appendChild(portada);
-
-    // Páginas del cuento (del 1 a la penúltima)
-    for (let i = 1; i < currentBook.pages.length - 1; i++) {
-        const page = currentBook.pages[i];
-        const pageDiv = document.createElement('div');
-        pageDiv.className = 'page';
-        pageDiv.id = `page${i}`;
-        pageDiv.style.backgroundImage = `url('${page.background}')`;
-        // Imprime el texto de la página si existe
-        let pageText = '';
-        if (page.text && page.text.trim() !== '') {
-            pageText = `<div class="page-text-content">${page.text}</div>`;
-        }
-        pageDiv.innerHTML = pageText;
-        pagesDiv.appendChild(pageDiv);
-    }
-
-    // Contraportada (última página)
-    if (currentBook.pages.length > 1) {
-        const lastIdx = currentBook.pages.length - 1;
-        const lastPage = currentBook.pages[lastIdx];
-        const contraportada = document.createElement('div');
-        contraportada.className = 'page';
-        contraportada.id = `page${lastIdx}`;
-        contraportada.style.backgroundImage = `url('${lastPage.background}')`;
-        // Fecha de edición y lugar si existen
-        let pubText = '';
-        if (currentBook.lastEdit || currentBook.publicationPlace) {
-            pubText = `<p id="publicacion">${currentBook.lastEdit ? 'Editado: ' + currentBook.lastEdit : ''}${currentBook.lastEdit && currentBook.publicationPlace ? '<br>' : ''}${currentBook.publicationPlace ? currentBook.publicationPlace : ''}</p>`;
-        }
-        contraportada.innerHTML = pubText;
-        pagesDiv.appendChild(contraportada);
-    }
-
-    bookDiv.appendChild(pagesDiv);
-    readerContainer.appendChild(bookDiv);
-
-    // Lógica de z-index y flipping
-    const pageEls = bookDiv.getElementsByClassName('page');
-    for (let i = 0; i < pageEls.length; i++) {
-        let page = pageEls[i];
-        if (i % 2 === 0) {
-            page.style.zIndex = (pageEls.length - i);
-        }
-    }
-
-    // Estado de página actual
-    let flipState = 0;
-    // Maneja el flipping y el audio
-    for (let i = 0; i < pageEls.length; i++) {
-        pageEls[i].pageNum = i + 1;
-        pageEls[i].onclick = function() {
-            if (this.pageNum % 2 === 0) {
-                this.classList.remove('flipped');
-                this.previousElementSibling.classList.remove('flipped');
-                flipState = this.pageNum - 2;
-            } else {
-                this.classList.add('flipped');
-                this.nextElementSibling && this.nextElementSibling.classList.add('flipped');
-                flipState = this.pageNum;
-            }
-            // Reproduce audio de la página si existe
-            playFlipBookAudio(flipState);
-        }
-    }
-
-    // Reproduce el audio de la portada al abrir
-    playFlipBookAudio(0);
-}
-
-// Reproduce el audio de la página actual en el flipbook
-function playFlipBookAudio(pageIndex) {
-    if (!currentBook || !currentBook.pages) return;
-    let idx = pageIndex;
-    if (idx < 0) idx = 0;
-    if (idx >= currentBook.pages.length) idx = currentBook.pages.length - 1;
-    const page = currentBook.pages[idx];
-    if (page && page.audio) {
-        if (window.currentAudio) {
-            window.currentAudio.pause();
-        }
-        window.currentAudio = new Audio(page.audio);
-        window.currentAudio.play();
-    }
+    displayReaderPages();
 }
 
 function hideAllSections() {
@@ -819,7 +717,8 @@ function createUserBookCard(book, index) {
 
     const cover = document.createElement('div');
     cover.className = 'book-cover';
-    cover.style.backgroundImage = `url(${book.pages[0].background})`;
+    // Siempre usar la primera imagen como portada
+    cover.style.backgroundImage = `url(${book.pages && book.pages[0] && book.pages[0].background ? book.pages[0].background : ''})`;
     cover.onclick = () => showBookReader(book);
 
     const info = document.createElement('div');
@@ -828,6 +727,10 @@ function createUserBookCard(book, index) {
     const title = document.createElement('h3');
     title.className = 'book-title';
     title.textContent = book.title;
+
+    const author = document.createElement('p');
+    author.className = 'book-author';
+    author.textContent = `Autor: ${book.author || 'Autor desconocido'}`;
 
     const description = document.createElement('p');
     description.className = 'book-description';
@@ -862,6 +765,7 @@ function createUserBookCard(book, index) {
     actions.appendChild(deleteBtn);
 
     info.appendChild(title);
+    info.appendChild(author);
     info.appendChild(description);
     info.appendChild(actions);
     card.appendChild(cover);
@@ -1160,23 +1064,59 @@ function showBookCover() {
     // Ocultar página izquierda
     leftPage.style.display = 'none';
 
-    // Mostrar portada en página derecha
+    // Mostrar portada en página derecha con apariencia de libro real y animación de apertura
     const rightBg = rightPage.querySelector('.page-background-right');
     const rightText = rightPage.querySelector('.page-text-right');
 
-    rightBg.style.backgroundImage = `url(${currentBook.pages[0].background})`;
+    // Usar solo la primera imagen como portada
+    const portadaUrl = currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '';
+    rightBg.style.backgroundImage = 'none';
     rightText.innerHTML = `
-        <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
-            <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">${currentBook.title}</h1>
-            <p style="font-size: 1.2rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">${currentBook.description}</p>
-            <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para comenzar</p>
+        <div class="book-cover-3d book-cover-anim" id="book-cover-anim" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+            <div class="book-cover-outer">
+                <div class="book-cover-lomo"></div>
+                <div class="book-cover-image" style="background-image: url('${portadaUrl}');">
+                    <div class="book-cover-content">
+                        <h1 class="book-cover-title">${currentBook.title}</h1>
+                        <p class="book-cover-desc">${currentBook.description}</p>
+                        <p class="book-cover-author">Autor: ${currentBook.author || 'Autor desconocido'}</p>
+                        <p class="book-cover-tap">Toca para abrir el libro</p>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     rightPage.style.display = 'flex';
+
+    // Animación de apertura de libro (solo portada)
+    setTimeout(() => {
+        const coverAnim = document.getElementById('book-cover-anim');
+        if (coverAnim) {
+            coverAnim.classList.add('open');
+        }
+    }, 100);
+
     rightPage.onclick = () => {
-        currentPage = 0;
-        displayReaderPages();
+        // Animación de apertura antes de pasar a la doble página
+        const coverAnim = document.getElementById('book-cover-anim');
+        if (coverAnim) {
+            coverAnim.classList.remove('open');
+            coverAnim.classList.add('close');
+            setTimeout(() => {
+                currentPage = 1;
+                displayReaderPages();
+            }, 500);
+        } else {
+            currentPage = 1;
+            displayReaderPages();
+        }
     };
+    // Permitir reproducir audio de la portada si existe
+    if (currentBook.pages[0].audio) {
+        if (currentAudio) { currentAudio.pause(); }
+        currentAudio = new Audio(currentBook.pages[0].audio);
+        currentAudio.play();
+    }
 }
 
 function showBookBackCover() {
@@ -1187,11 +1127,24 @@ function showBookBackCover() {
     const leftBg = leftPage.querySelector('.page-background-left');
     const leftText = leftPage.querySelector('.page-text-left');
 
-    leftBg.style.backgroundImage = `url(${currentBook.pages[currentBook.pages.length - 1].background})`;
+    // Usar la última imagen como contraportada, o la portada si solo hay una
+    const backImg = (currentBook.pages && currentBook.pages.length > 1 && currentBook.pages[currentBook.pages.length - 1].background) ? currentBook.pages[currentBook.pages.length - 1].background : (currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '');
+    leftBg.style.backgroundImage = `url(${backImg})`;
+    // Fecha de edición
+    let fechaEdicion = '';
+    if (currentBook.lastEdit) {
+        fechaEdicion = `Última edición: ${currentBook.lastEdit}`;
+    } else {
+        // Si no existe, usar fecha de guardado o creación
+        const now = new Date();
+        fechaEdicion = `Última edición: ${now.toLocaleDateString()}`;
+    }
     leftText.innerHTML = `
         <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
             <h2 style="font-size: 1.8rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">¡Fin!</h2>
             <p style="font-size: 1.1rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">¡Has terminado de leer "${currentBook.title}"!</p>
+            <p style="font-size: 1.1rem; color: #555; margin-top: 0.5rem;">Autor: ${currentBook.author || 'Autor desconocido'}</p>
+            <p style="font-size: 1.1rem; color: #888; margin-top: 0.5rem;">${fechaEdicion}</p>
             <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para cerrar</p>
         </div>
     `;
@@ -1210,37 +1163,43 @@ function showRegularPages() {
     const leftPage = document.getElementById('page-left');
     const rightPage = document.getElementById('page-right');
 
+    // Mostrar páginas de dos en dos, sin repetir la portada
+    // currentPage = 1 es página 1 (imagen 2), etc.
+    if (currentPage < 1) {
+        leftPage.style.display = 'none';
+        rightPage.style.display = 'none';
+        return;
+    }
     // Página izquierda
-    if (currentPage < currentBook.pages.length) {
-        const page = currentBook.pages[currentPage];
+    let leftIdx = currentPage;
+    let rightIdx = currentPage + 1;
+    if (leftIdx < currentBook.pages.length) {
+        const page = currentBook.pages[leftIdx];
         const leftBg = leftPage.querySelector('.page-background-left');
         const leftText = leftPage.querySelector('.page-text-left');
-
         leftBg.style.backgroundImage = `url(${page.background})`;
         leftText.textContent = page.text || '';
         leftPage.style.display = 'flex';
-
         leftPage.onclick = () => {
-            if (currentPage > 0) {
+            if (currentPage > 1) {
                 currentPage -= 2;
-                if (currentPage < 0) currentPage = -1;
+                displayReaderPages();
+            } else if (currentPage === 1) {
+                currentPage = 0;
                 displayReaderPages();
             }
         };
     } else {
         leftPage.style.display = 'none';
     }
-
     // Página derecha
-    if (currentPage + 1 < currentBook.pages.length) {
-        const page = currentBook.pages[currentPage + 1];
+    if (rightIdx < currentBook.pages.length) {
+        const page = currentBook.pages[rightIdx];
         const rightBg = rightPage.querySelector('.page-background-right');
         const rightText = rightPage.querySelector('.page-text-right');
-
         rightBg.style.backgroundImage = `url(${page.background})`;
         rightText.textContent = page.text || '';
         rightPage.style.display = 'flex';
-
         rightPage.onclick = () => {
             currentPage += 2;
             displayReaderPages();
@@ -1248,7 +1207,6 @@ function showRegularPages() {
     } else {
         rightPage.style.display = 'none';
     }
-
     // Preparar y reproducir audios de las páginas visibles
     prepareAndPlayAudios();
 }
@@ -1257,12 +1215,17 @@ function prepareAndPlayAudios() {
     audioQueue = [];
     currentAudioIndex = 0;
 
-    // Agregar audios de páginas visibles a la cola
-    if (currentPage >= 0 && currentPage < currentBook.pages.length && currentBook.pages[currentPage].audio) {
-        audioQueue.push(currentBook.pages[currentPage].audio);
-    }
-    if (currentPage + 1 < currentBook.pages.length && currentBook.pages[currentPage + 1].audio) {
-        audioQueue.push(currentBook.pages[currentPage + 1].audio);
+    // Si estamos en portada
+    if (currentPage === 0 && currentBook.pages[0].audio) {
+        audioQueue.push(currentBook.pages[0].audio);
+    } else if (currentPage > 0) {
+        // Agregar audios de páginas visibles a la cola (sin repetir portada)
+        if (currentPage < currentBook.pages.length && currentBook.pages[currentPage].audio) {
+            audioQueue.push(currentBook.pages[currentPage].audio);
+        }
+        if (currentPage + 1 < currentBook.pages.length && currentBook.pages[currentPage + 1].audio) {
+            audioQueue.push(currentBook.pages[currentPage + 1].audio);
+        }
     }
 
     // Reproducir primer audio si hay cola
@@ -1353,9 +1316,10 @@ function updateReadingProgress() {
 // Creador de libros
 function initializeCreator() {
     document.getElementById('book-title-input').value = '';
+    let authorInput = document.getElementById('book-author-input');
+    if (authorInput) authorInput.value = '';
     document.getElementById('book-description').value = '';
     document.getElementById('page-creator').innerHTML = '';
-
     // Agregar páginas iniciales
     for (let i = 0; i < 3; i++) {
         addNewPage();
@@ -1364,24 +1328,32 @@ function initializeCreator() {
 
 function addNewPage() {
     const container = document.getElementById('page-creator');
-    const pageCount = container.children.length + 1;
+    const pageCount = container.children.length;
 
     const pageDiv = document.createElement('div');
     pageDiv.className = 'page-creator-item';
 
+    // La primera imagen es la portada, las siguientes son páginas 1, 2, ...
+    let pageLabel = '';
+    if (pageCount === 0) {
+        pageLabel = 'Portada';
+    } else {
+        pageLabel = `Página ${pageCount}`;
+    }
+
     pageDiv.innerHTML = `
-        <h4>Página ${pageCount}</h4>
+        <h4>${pageLabel}</h4>
         <div class="image-selection">
             <div class="image-upload">
-                <label for="page-image-${pageCount}">📷 Subir imagen propia</label>
-                <input type="file" id="page-image-${pageCount}" accept="image/*" onchange="handleImageUpload(this, ${pageCount - 1})">
+                <label for="page-image-${pageCount+1}">📷 Subir imagen propia</label>
+                <input type="file" id="page-image-${pageCount+1}" accept="image/*" onchange="handleImageUpload(this, ${pageCount})">
             </div>
-            <button class="gallery-btn" onclick="showImageGallery(${pageCount - 1})">🖼️ Galería de imágenes</button>
+            <button class="gallery-btn" onclick="showImageGallery(${pageCount})">🖼️ Galería de imágenes</button>
         </div>
-        <div class="image-preview" id="preview-${pageCount}" style="display: none; margin: 1rem 0;">
-            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount}">
+        <div class="image-preview" id="preview-${pageCount+1}" style="display: none; margin: 1rem 0;">
+            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount+1}">
         </div>
-        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount}">
+        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount+1}">
             <div class="gallery-content">
                 <h4>Selecciona una imagen</h4>
                 <div class="gallery-categories">
@@ -1390,14 +1362,14 @@ function addNewPage() {
                             <h5>${category.charAt(0).toUpperCase() + category.slice(1)}</h5>
                             <div class="gallery-images">
                                 ${images.map(img => `
-                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount - 1}, ${pageCount})" 
+                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount}, ${pageCount+1})" 
                                          style="width: 80px; height: 60px; object-fit: cover; margin: 5px; cursor: pointer; border-radius: 5px;">
                                 `).join('')}
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <button onclick="closeImageGallery(${pageCount})">Cerrar</button>
+                <button onclick="closeImageGallery(${pageCount+1})">Cerrar</button>
             </div>
         </div>
     `;
@@ -1460,6 +1432,9 @@ function handleImageUpload(input, pageIndex) {
 function createNewBook() {
     const title = document.getElementById('book-title-input').value.trim();
     const description = document.getElementById('book-description').value.trim();
+    // Tomar autor del input
+    let authorInput = document.getElementById('book-author-input');
+    let author = (authorInput && authorInput.value.trim()) ? authorInput.value.trim() : ((typeof userName === 'string' && userName.trim()) ? userName.trim() : 'Autor desconocido');
 
     if (!title) {
         playErrorSound();
@@ -1467,17 +1442,34 @@ function createNewBook() {
         return;
     }
 
-    if (!window.tempBookPages || window.tempBookPages.length === 0) {
+    if (!window.tempBookPages || !Array.isArray(window.tempBookPages) || window.tempBookPages.length === 0) {
         playErrorSound();
         showMascot(`¡${userName}! Necesitas agregar al menos una imagen de fondo para comenzar.`);
         return;
     }
 
+    // Validar que la primera página tenga imagen (portada)
+    const portada = window.tempBookPages[0];
+    if (!portada || !portada.background) {
+        playErrorSound();
+        showMascot(`¡${userName}! Debes seleccionar una imagen para la portada (primera página).`);
+        return;
+    }
+
+    // Asegurar que cada página tenga al menos el campo background y text
+    const pages = window.tempBookPages
+        .filter(page => page && typeof page.background === 'string' && page.background.length > 0)
+        .map(page => ({
+            background: page.background,
+            text: typeof page.text === 'string' ? page.text : ''
+        }));
+
     const newBook = {
         id: 'custom_' + Date.now(),
         title: title,
         description: description || 'Mi libro personalizado',
-        pages: window.tempBookPages.filter(page => page), // Filtrar páginas vacías
+        author: author,
+        pages: pages,
         isTemplate: false
     };
 
@@ -1499,162 +1491,322 @@ function deleteBook(index) {
 
 // Función para crear video MP4 del libro
 async function createBookVideo(book) {
+
     try {
+        // Validar datos esenciales antes de iniciar el proceso
+        const portada = (book.pages && Array.isArray(book.pages) && book.pages[0]) ? book.pages[0].background : null;
+        const autor = (typeof book.author === 'string' && book.author.trim()) ? book.author : 'Autor desconocido';
+        const descripcion = (typeof book.description === 'string' && book.description.trim()) ? book.description : 'Mi libro personalizado';
+        if (!portada || portada.length < 5) {
+            playErrorSound();
+            showMascot(`${userName}, tu libro no tiene una imagen de portada válida. Por favor edita el libro y selecciona una imagen para la portada.`);
+            return;
+        }
+        if (!book.title || typeof book.title !== 'string' || book.title.trim().length === 0) {
+            playErrorSound();
+            showMascot(`${userName}, tu libro no tiene título. Por favor edita el libro y ponle un título.`);
+            return;
+        }
+
         showMascot(`${userName}, estoy preparando tu video mágico... ¡Esto puede tomar unos momentos!`, 3000);
         playMagicSound();
 
-        // Crear canvas para el video
+        // Canvas y contexto
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 1920;
-        canvas.height = 1080;
+        canvas.width = 1280;
+        canvas.height = 720;
 
-        // Configurar MediaRecorder para capturar canvas
-        const stream = canvas.captureStream(30); // 30 FPS
+        // MediaRecorder para capturar el canvas
+        const stream = canvas.captureStream(30);
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        // Crear pista de audio para el video
         const audioDestination = audioContext.createMediaStreamDestination();
         stream.addTrack(audioDestination.stream.getAudioTracks()[0]);
-
-        const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9,opus'
-        });
-
+        const videoRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9,opus' });
         const chunks = [];
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                chunks.push(event.data);
-            }
-        };
-
-        mediaRecorder.onstop = () => {
+        videoRecorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+        videoRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             downloadVideoBlob(blob, book.title);
         };
+        videoRecorder.start();
+        // ...
 
-        // Comenzar grabación
-        mediaRecorder.start();
-
-        // Función para renderizar cada página
-        async function renderPage(pageIndex) {
-            return new Promise((resolve) => {
-                const page = book.pages[pageIndex];
-
-                // Limpiar canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Cargar imagen de fondo
+        // Dibuja el libro cerrado (portada/contraportada) y espera a que la imagen cargue
+        async function drawClosedBook(coverImg, title, author, desc) {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Sombra libro
+            ctx.fillStyle = '#bfa76f';
+            ctx.fillRect(canvas.width/2-220, 120, 440, 480);
+            // Tapa
+            ctx.fillStyle = '#f5e6c8';
+            ctx.fillRect(canvas.width/2-200, 140, 400, 440);
+            // Imagen portada
+            if (coverImg) {
                 const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    // Dibujar fondo
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    // Agregar overlay semitransparente
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                    // Agregar título del libro en la primera página
-                    if (pageIndex === 0) {
-                        ctx.font = 'bold 80px "Comic Sans MS", cursive';
-                        ctx.fillStyle = '#333';
-                        ctx.textAlign = 'center';
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 4;
-                        ctx.strokeText(book.title, canvas.width / 2, 200);
-                        ctx.fillText(book.title, canvas.width / 2, 200);
-                    }
-
-                    // Agregar texto de la página
-                    if (page.text) {
-                        ctx.font = 'bold 48px "Comic Sans MS", cursive';
-                        ctx.fillStyle = '#333';
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 3;
-                        ctx.textAlign = 'center';
-
-                        const words = page.text.split(' ');
-                        const lines = [];
-                        let currentLine = '';
-
-                        words.forEach(word => {
-                            const testLine = currentLine + word + ' ';
-                            const metrics = ctx.measureText(testLine);
-                            if (metrics.width > canvas.width - 200 && currentLine !== '') {
-                                lines.push(currentLine);
-                                currentLine = word + ' ';
-                            } else {
-                                currentLine = testLine;
-                            }
-                        });
-                        lines.push(currentLine);
-
-                        const startY = canvas.height - 300;
-                        lines.forEach((line, index) => {
-                            const y = startY + (index * 60);
-                            ctx.strokeText(line, canvas.width / 2, y);
-                            ctx.fillText(line, canvas.width / 2, y);
-                        });
-                    }
-
-                    // Agregar número de página
-                    ctx.font = 'bold 36px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#666';
-                    ctx.textAlign = 'right';
-                    ctx.fillText(`Página ${pageIndex + 1}`, canvas.width - 50, canvas.height - 50);
-
-                    // Agregar logo de AudioTale
-                    ctx.font = 'bold 32px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#4a90e2';
-                    ctx.textAlign = 'left';
-                    ctx.fillText('🎧 AudioTale', 50, canvas.height - 50);
-
-                    resolve();
-                };
-
-                img.onerror = () => {
-                    // Si no se puede cargar la imagen, usar color sólido
-                    ctx.fillStyle = '#667eea';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    resolve();
-                };
-
-                img.src = page.background;
-            });
+                await new Promise(res => {
+                    img.onload = () => {
+                        ctx.drawImage(img, canvas.width/2-180, 160, 360, 220);
+                        res();
+                    };
+                    img.onerror = res;
+                    img.src = coverImg;
+                });
+            }
+            // Título
+            ctx.font = 'bold 40px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#4a90e2';
+            ctx.textAlign = 'center';
+            ctx.fillText(title, canvas.width/2, 410);
+            // Autor
+            ctx.font = '28px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Autor: ' + (author||''), canvas.width/2, 450);
+            // Descripción
+            ctx.font = '22px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#888';
+            ctx.fillText(desc||'', canvas.width/2, 490);
+            ctx.restore();
         }
 
-        // Renderizar cada página por 3 segundos
-        let currentPageIndex = 0;
-
-        async function renderNextPage() {
-            if (currentPageIndex < book.pages.length) {
-                await renderPage(currentPageIndex);
-
-                // Reproducir audio de la página si existe
-                if (book.pages[currentPageIndex].audio) {
-                    const audio = new Audio(book.pages[currentPageIndex].audio);
-                    const audioSource = audioContext.createMediaElementSource(audio);
-                    audioSource.connect(audioDestination);
-                    audio.play().catch(e => console.log('Error reproduciendo audio:', e));
+        // Dibuja el libro abierto (doble página)
+        async function drawOpenBook(left, right, leftText, rightText) {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Fondo
+            ctx.fillStyle = '#f5e6c8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Sombra central
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.fillRect(canvas.width / 2 - 10, 40, 20, canvas.height - 80);
+            // Borde
+            ctx.strokeStyle = '#bfa76f';
+            ctx.lineWidth = 12;
+            ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+            // Imagen izquierda
+            if (left) {
+                const imgL = new Image();
+                await new Promise(res => {
+                    imgL.onload = () => {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(60, 60);
+                        ctx.lineTo(canvas.width/2-10, 60);
+                        ctx.lineTo(canvas.width/2-10, canvas.height-60);
+                        ctx.lineTo(60, canvas.height-60);
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.drawImage(imgL, 60, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.restore();
+                        res();
+                    };
+                    imgL.onerror = res;
+                    imgL.src = left;
+                });
+            }
+            // Imagen derecha
+            if (right) {
+                const imgR = new Image();
+                await new Promise(res => {
+                    imgR.onload = () => {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(canvas.width/2+10, 60);
+                        ctx.lineTo(canvas.width-60, 60);
+                        ctx.lineTo(canvas.width-60, canvas.height-60);
+                        ctx.lineTo(canvas.width/2+10, canvas.height-60);
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.drawImage(imgR, canvas.width/2+10, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.restore();
+                        res();
+                    };
+                    imgR.onerror = res;
+                    imgR.src = right;
+                });
+            }
+            // Texto izquierda
+            if (leftText) {
+                ctx.save();
+                ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 4;
+                const x = canvas.width/4;
+                const y = canvas.height - 120;
+                const maxWidth = canvas.width/2-100;
+                let words = (leftText||'').split(' '), line = '', lines = [];
+                for (let w of words) {
+                    let test = line + w + ' ';
+                    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
                 }
+                if (line) lines.push(line);
+                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                ctx.restore();
+            }
+            // Texto derecha
+            if (rightText) {
+                ctx.save();
+                ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 4;
+                const x = 3*canvas.width/4;
+                const y = canvas.height - 120;
+                const maxWidth = canvas.width/2-100;
+                let words = (rightText||'').split(' '), line = '', lines = [];
+                for (let w of words) {
+                    let test = line + w + ' ';
+                    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
+                }
+                if (line) lines.push(line);
+                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                ctx.restore();
+            }
+            ctx.restore();
+        }
 
-                currentPageIndex++;
-                setTimeout(renderNextPage, 4000); // 4 segundos por página
-            } else {
-                // Finalizar grabación
-                setTimeout(() => {
-                    mediaRecorder.stop();
-                    audioContext.close();
-                    playSuccessSound();
-                    showMascot(`¡Increíble ${userName}! Tu video está listo para descargar y compartir.`, 4000);
-                }, 1000);
+        // Animación de apertura de libro
+        async function animateBookOpening(coverImg, title, author, desc) {
+            // De libro cerrado a abierto (simple fade)
+            for (let t=0; t<=1; t+=0.05) {
+                ctx.save();
+                ctx.globalAlpha = 1;
+                drawClosedBook(coverImg, title, author, desc);
+                ctx.globalAlpha = t;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
             }
         }
 
-        // Comenzar renderizado
-        renderNextPage();
+        // Animación de paso de página (doble página)
+        async function animatePageTurnDouble(prevLeft, prevRight, nextLeft, nextRight, prevLeftText, prevRightText, nextLeftText, nextRightText) {
+            // Efecto de "giro" simple: deslizamiento horizontal
+            const steps = 20;
+            // Precargar imágenes si existen
+            let imgPrevLeft = null, imgPrevRight = null, imgNextLeft = null, imgNextRight = null;
+            async function loadImg(src) {
+                if (!src) return null;
+                return await new Promise(res => {
+                    const img = new Image();
+                    img.onload = () => res(img);
+                    img.onerror = () => res(null);
+                    img.src = src;
+                });
+            }
+            [imgPrevLeft, imgPrevRight, imgNextLeft, imgNextRight] = await Promise.all([
+                loadImg(prevLeft),
+                loadImg(prevRight),
+                loadImg(nextLeft),
+                loadImg(nextRight)
+            ]);
+            for (let s=0; s<=steps; s++) {
+                const progress = s/steps;
+                ctx.save();
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                // Fondo
+                ctx.fillStyle = '#f5e6c8';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                // Páginas anteriores (izq/der) se deslizan a la izquierda
+                if (imgPrevLeft) {
+                    ctx.drawImage(imgPrevLeft, 60-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                }
+                if (imgPrevRight) {
+                    ctx.drawImage(imgPrevRight, canvas.width/2+10-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                }
+                // Nuevas páginas aparecen desde la derecha
+                if (imgNextLeft) {
+                    ctx.drawImage(imgNextLeft, 60+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                }
+                if (imgNextRight) {
+                    ctx.drawImage(imgNextRight, canvas.width/2+10+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                }
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
+            }
+        }
+        const pages = [
+            { type: 'cover', img: portada, text: book.title, desc: descripcion, author: autor },
+            ...(Array.isArray(book.pages) ? book.pages.map((p, i) => ({
+                type: 'page',
+                img: p && p.background ? p.background : '',
+                text: p && typeof p.text === 'string' ? p.text : '',
+                audio: p && p.audio ? p.audio : undefined,
+                idx: i
+            })) : []),
+            { type: 'back', img: (book.pages && book.pages.length > 0 && book.pages[0]?.background) ? book.pages[0].background : portada, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author: autor, lastEdit: book.lastEdit || (new Date()).toLocaleDateString() }
+        ];
 
+        async function renderBookPages() {
+            // 1. Libro cerrado (portada)
+            await drawClosedBook(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
+            await new Promise(r=>setTimeout(r, 1500));
+
+            // 2. Animación de apertura
+            await animateBookOpening(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
+            await new Promise(r=>setTimeout(r, 500));
+
+            // 3. Portadilla (igual a portada, pero libro abierto)
+            await drawOpenBook(pages[0].img, null, pages[0].text, pages[0].author);
+            await new Promise(r=>setTimeout(r, 1200));
+
+            // 4. Páginas dobles de la historia
+            let pagePairs = [];
+            for (let i=1; i<pages.length-1; i+=2) {
+                pagePairs.push([pages[i], pages[i+1]||null]);
+            }
+            let prevLeft = pages[0].img, prevRight = null, prevLeftText = '', prevRightText = '';
+            for (let pair of pagePairs) {
+                const left = pair[0], right = pair[1];
+                // Animación de paso de página
+                await animatePageTurnDouble(prevLeft, prevRight, left?.img, right?.img, prevLeftText, prevRightText, left?.text, right?.text);
+                // Mostrar doble página
+                await drawOpenBook(left?.img, right?.img, left?.text, right?.text);
+                // Reproducir audio de ambas páginas, en orden, solo una vez cada una
+                if (left?.audio) {
+                    const audioL = new Audio(left.audio);
+                    const audioSourceL = audioContext.createMediaElementSource(audioL);
+                    audioSourceL.connect(audioDestination);
+                    await new Promise(res=>{audioL.onended=res; audioL.play().catch(()=>res());});
+                }
+                if (right?.audio) {
+                    const audioR = new Audio(right.audio);
+                    const audioSourceR = audioContext.createMediaElementSource(audioR);
+                    audioSourceR.connect(audioDestination);
+                    await new Promise(res=>{audioR.onended=res; audioR.play().catch(()=>res());});
+                }
+                await new Promise(r=>setTimeout(r, 500));
+                prevLeft = left?.img; prevRight = right?.img; prevLeftText = left?.text; prevRightText = right?.text;
+            }
+
+            // 5. Cierre del libro mostrando contraportada
+            // (Animación simple: fundido a libro cerrado con contraportada)
+            for (let t=0; t<=1; t+=0.05) {
+                ctx.save();
+                ctx.globalAlpha = 1-t;
+                await drawOpenBook(prevLeft, prevRight, prevLeftText, prevRightText);
+                ctx.globalAlpha = t;
+                await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, pages[pages.length-1].desc);
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
+            }
+            // Contraportada con fecha
+            await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, 'Última edición: '+(pages[pages.length-1].lastEdit||''));
+            await new Promise(r=>setTimeout(r, 1500));
+
+            setTimeout(() => {
+                videoRecorder.stop();
+                audioContext.close();
+                playSuccessSound();
+                showMascot(`¡Increíble ${userName}! Tu libro animado está listo para descargar y compartir.`, 4000);
+            }, 1000);
+        }
+
+        await renderBookPages();
     } catch (error) {
         console.error('Error creando video:', error);
         playErrorSound();
@@ -1814,7 +1966,20 @@ function loadUserData() {
             userImages = userData.userImages || [];
             // Migrar audios antiguos (blob:) a null para evitar referencias rotas
             books.forEach(book => {
-                if (book.pages && Array.isArray(book.pages)) {
+                // Asegurar campos esenciales
+                if (!book.author || typeof book.author !== 'string') {
+                    book.author = 'Autor desconocido';
+                }
+                if (!book.description || typeof book.description !== 'string') {
+                    book.description = 'Mi libro personalizado';
+                }
+                if (book.pages && Array.isArray(book.pages) && book.pages.length > 0) {
+                    // Asegurar que la portada tenga imagen
+                    if (!book.pages[0] || typeof book.pages[0] !== 'object') {
+                        book.pages[0] = { background: '', text: '' };
+                    } else if (!book.pages[0].background) {
+                        book.pages[0].background = '';
+                    }
                     book.pages.forEach(page => {
                         // Solo borrar audios que sean blob:, no los que sean data:audio
                         if (page.audio && typeof page.audio === 'string') {
@@ -1826,6 +1991,9 @@ function loadUserData() {
                                 console.log('✅ Audio base64 detectado en página', page);
                             }
                         }
+                        // Asegurar campos mínimos
+                        if (!('text' in page)) page.text = '';
+                        if (!('background' in page)) page.background = '';
                     });
                 }
             });
@@ -1944,4 +2112,5 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 }
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
+
 
