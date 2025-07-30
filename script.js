@@ -1068,7 +1068,7 @@ function showBookCover() {
     const rightBg = rightPage.querySelector('.page-background-right');
     const rightText = rightPage.querySelector('.page-text-right');
 
-    // Usar solo la primera imagen como portada
+    // Siempre usar la primera imagen como portada
     rightBg.style.backgroundImage = `url(${currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : ''})`;
     rightText.innerHTML = `
         <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
@@ -1080,15 +1080,9 @@ function showBookCover() {
     `;
     rightPage.style.display = 'flex';
     rightPage.onclick = () => {
-        currentPage = 1;
+        currentPage = 0;
         displayReaderPages();
     };
-    // Permitir reproducir audio de la portada si existe
-    if (currentBook.pages[0].audio) {
-        if (currentAudio) { currentAudio.pause(); }
-        currentAudio = new Audio(currentBook.pages[0].audio);
-        currentAudio.play();
-    }
 }
 
 function showBookBackCover() {
@@ -1099,8 +1093,8 @@ function showBookBackCover() {
     const leftBg = leftPage.querySelector('.page-background-left');
     const leftText = leftPage.querySelector('.page-text-left');
 
-    // Usar la última imagen como contraportada, o la portada si solo hay una
-    const backImg = (currentBook.pages && currentBook.pages.length > 1 && currentBook.pages[currentBook.pages.length - 1].background) ? currentBook.pages[currentBook.pages.length - 1].background : (currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '');
+    // Siempre usar la primera imagen como portada/contraportada si no hay otra
+    const backImg = (currentBook.pages && currentBook.pages.length > 0 && currentBook.pages[currentBook.pages.length - 1].background) ? currentBook.pages[currentBook.pages.length - 1].background : (currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '');
     leftBg.style.backgroundImage = `url(${backImg})`;
     // Fecha de edición
     let fechaEdicion = '';
@@ -1135,43 +1129,37 @@ function showRegularPages() {
     const leftPage = document.getElementById('page-left');
     const rightPage = document.getElementById('page-right');
 
-    // Mostrar páginas de dos en dos, sin repetir la portada
-    // currentPage = 1 es página 1 (imagen 2), etc.
-    if (currentPage < 1) {
-        leftPage.style.display = 'none';
-        rightPage.style.display = 'none';
-        return;
-    }
     // Página izquierda
-    let leftIdx = currentPage;
-    let rightIdx = currentPage + 1;
-    if (leftIdx < currentBook.pages.length) {
-        const page = currentBook.pages[leftIdx];
+    if (currentPage < currentBook.pages.length) {
+        const page = currentBook.pages[currentPage];
         const leftBg = leftPage.querySelector('.page-background-left');
         const leftText = leftPage.querySelector('.page-text-left');
+
         leftBg.style.backgroundImage = `url(${page.background})`;
         leftText.textContent = page.text || '';
         leftPage.style.display = 'flex';
+
         leftPage.onclick = () => {
-            if (currentPage > 1) {
+            if (currentPage > 0) {
                 currentPage -= 2;
-                displayReaderPages();
-            } else if (currentPage === 1) {
-                currentPage = 0;
+                if (currentPage < 0) currentPage = -1;
                 displayReaderPages();
             }
         };
     } else {
         leftPage.style.display = 'none';
     }
+
     // Página derecha
-    if (rightIdx < currentBook.pages.length) {
-        const page = currentBook.pages[rightIdx];
+    if (currentPage + 1 < currentBook.pages.length) {
+        const page = currentBook.pages[currentPage + 1];
         const rightBg = rightPage.querySelector('.page-background-right');
         const rightText = rightPage.querySelector('.page-text-right');
+
         rightBg.style.backgroundImage = `url(${page.background})`;
         rightText.textContent = page.text || '';
         rightPage.style.display = 'flex';
+
         rightPage.onclick = () => {
             currentPage += 2;
             displayReaderPages();
@@ -1179,6 +1167,7 @@ function showRegularPages() {
     } else {
         rightPage.style.display = 'none';
     }
+
     // Preparar y reproducir audios de las páginas visibles
     prepareAndPlayAudios();
 }
@@ -1187,17 +1176,12 @@ function prepareAndPlayAudios() {
     audioQueue = [];
     currentAudioIndex = 0;
 
-    // Si estamos en portada
-    if (currentPage === 0 && currentBook.pages[0].audio) {
-        audioQueue.push(currentBook.pages[0].audio);
-    } else if (currentPage > 0) {
-        // Agregar audios de páginas visibles a la cola (sin repetir portada)
-        if (currentPage < currentBook.pages.length && currentBook.pages[currentPage].audio) {
-            audioQueue.push(currentBook.pages[currentPage].audio);
-        }
-        if (currentPage + 1 < currentBook.pages.length && currentBook.pages[currentPage + 1].audio) {
-            audioQueue.push(currentBook.pages[currentPage + 1].audio);
-        }
+    // Agregar audios de páginas visibles a la cola
+    if (currentPage >= 0 && currentPage < currentBook.pages.length && currentBook.pages[currentPage].audio) {
+        audioQueue.push(currentBook.pages[currentPage].audio);
+    }
+    if (currentPage + 1 < currentBook.pages.length && currentBook.pages[currentPage + 1].audio) {
+        audioQueue.push(currentBook.pages[currentPage + 1].audio);
     }
 
     // Reproducir primer audio si hay cola
@@ -2084,3 +2068,5 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 }
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
+
+
