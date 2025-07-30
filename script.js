@@ -1482,21 +1482,18 @@ async function createBookVideo(book) {
             ctx.restore();
         }
 
-        // Animación de cambio de página (1s)
+        // Animación de cambio de página (1s, efecto "giro")
         async function animatePageTurn(fromImg, toImg, fromText, toText) {
-            for (let t = 0; t <= 1; t += 0.05) {
+            const steps = 20;
+            for (let s = 0; s <= steps; s++) {
+                const progress = s / steps;
                 drawBookFrame();
-                if (fromImg) await drawPageImage(fromImg, 'left');
-                ctx.save();
-                ctx.globalAlpha = 1 - t;
-                if (fromImg) await drawPageImage(fromImg, 'right');
-                ctx.globalAlpha = t;
-                if (toImg) await drawPageImage(toImg, 'right');
-                ctx.globalAlpha = 1;
-                ctx.restore();
-                if (fromText) drawPageText(fromText, 'left');
-                if (fromText) drawPageText(fromText, 'right');
-                if (toText) drawPageText(toText, 'right');
+                // Página izquierda: la que se va
+                if (fromImg) await drawPageImage(fromImg, 'left', 1 - progress);
+                if (fromText) drawPageText(fromText, 'left', 1 - progress);
+                // Página derecha: la que llega
+                if (toImg) await drawPageImage(toImg, 'right', progress);
+                if (toText) drawPageText(toText, 'right', progress);
                 await new Promise(r => setTimeout(r, 50));
             }
         }
@@ -1511,68 +1508,72 @@ async function createBookVideo(book) {
         ];
 
         async function renderBookPages() {
-            let prevImg = null, prevText = '';
-            for (let i = 0; i < pages.length; i++) {
+            // Portada
+            drawBookFrame();
+            await drawPageImage(pages[0].img, 'right');
+            ctx.save();
+            ctx.font = 'bold 64px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#4a90e2';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 8;
+            ctx.fillText(pages[0].text, 3 * canvas.width / 4, 200);
+            ctx.font = '32px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#333';
+            ctx.shadowBlur = 0;
+            ctx.fillText(pages[0].desc || '', 3 * canvas.width / 4, 260);
+            ctx.font = '28px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Autor: ' + pages[0].author, 3 * canvas.width / 4, 320);
+            ctx.restore();
+            await new Promise(r => setTimeout(r, 2000));
+
+            // Páginas normales
+            for (let i = 1; i < pages.length - 1; i++) {
+                // Animación de paso de página
+                await animatePageTurn(pages[i - 1].img, pages[i].img, pages[i - 1].text, pages[i].text);
+                // Mostrar página derecha (nueva)
                 drawBookFrame();
-                if (i === 0) { // Portada
-                    await drawPageImage(pages[i].img, 'right');
-                    ctx.save();
-                    ctx.font = 'bold 64px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#4a90e2';
-                    ctx.textAlign = 'center';
-                    ctx.shadowColor = '#fff';
-                    ctx.shadowBlur = 8;
-                    ctx.fillText(pages[i].text, 3 * canvas.width / 4, 200);
-                    ctx.font = '32px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#333';
-                    ctx.shadowBlur = 0;
-                    ctx.fillText(pages[i].desc || '', 3 * canvas.width / 4, 260);
-                    ctx.font = '28px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#666';
-                    ctx.fillText('Autor: ' + pages[i].author, 3 * canvas.width / 4, 320);
-                    ctx.restore();
-                    await new Promise(r => setTimeout(r, 2000));
-                } else if (i === pages.length - 1) { // Contraportada
-                    await drawPageImage(pages[i].img, 'left');
-                    ctx.save();
-                    ctx.font = 'bold 64px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#4a90e2';
-                    ctx.textAlign = 'center';
-                    ctx.shadowColor = '#fff';
-                    ctx.shadowBlur = 8;
-                    ctx.fillText(pages[i].text, canvas.width / 4, 200);
-                    ctx.font = '32px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#333';
-                    ctx.shadowBlur = 0;
-                    ctx.fillText(pages[i].desc || '', canvas.width / 4, 260);
-                    ctx.font = '28px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#666';
-                    ctx.fillText('Autor: ' + pages[i].author, canvas.width / 4, 320);
-                    ctx.font = '24px "Comic Sans MS", cursive';
-                    ctx.fillStyle = '#888';
-                    ctx.fillText('Última edición: ' + pages[i].lastEdit, canvas.width / 4, 370);
-                    ctx.restore();
-                    await new Promise(r => setTimeout(r, 2000));
+                await drawPageImage(pages[i].img, 'right');
+                drawPageText(pages[i].text, 'right');
+                // Sincronizar audio
+                if (pages[i].audio) {
+                    const audio = new Audio(pages[i].audio);
+                    const audioSource = audioContext.createMediaElementSource(audio);
+                    audioSource.connect(audioDestination);
+                    await new Promise(res => {
+                        audio.onended = res;
+                        audio.play().catch(() => res());
+                    });
                 } else {
-                    await animatePageTurn(prevImg, pages[i].img, prevText, pages[i].text);
-                    drawBookFrame();
-                    await drawPageImage(pages[i].img, 'right');
-                    drawPageText(pages[i].text, 'right');
-                    if (pages[i].audio) {
-                        const audio = new Audio(pages[i].audio);
-                        const audioSource = audioContext.createMediaElementSource(audio);
-                        audioSource.connect(audioDestination);
-                        await new Promise(res => {
-                            audio.onended = res;
-                            audio.play().catch(() => res());
-                        });
-                    } else {
-                        await new Promise(r => setTimeout(r, 3500));
-                    }
+                    await new Promise(r => setTimeout(r, 3500));
                 }
-                prevImg = pages[i].img;
-                prevText = pages[i].text;
             }
+
+            // Contraportada
+            await animatePageTurn(pages[pages.length - 2].img, pages[pages.length - 1].img, pages[pages.length - 2].text, pages[pages.length - 1].text);
+            drawBookFrame();
+            await drawPageImage(pages[pages.length - 1].img, 'left');
+            ctx.save();
+            ctx.font = 'bold 64px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#4a90e2';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#fff';
+            ctx.shadowBlur = 8;
+            ctx.fillText(pages[pages.length - 1].text, canvas.width / 4, 200);
+            ctx.font = '32px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#333';
+            ctx.shadowBlur = 0;
+            ctx.fillText(pages[pages.length - 1].desc || '', canvas.width / 4, 260);
+            ctx.font = '28px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Autor: ' + pages[pages.length - 1].author, canvas.width / 4, 320);
+            ctx.font = '24px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#888';
+            ctx.fillText('Última edición: ' + pages[pages.length - 1].lastEdit, canvas.width / 4, 370);
+            ctx.restore();
+            await new Promise(r => setTimeout(r, 2000));
+
             setTimeout(() => {
                 videoRecorder.stop();
                 audioContext.close();
