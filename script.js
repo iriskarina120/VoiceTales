@@ -520,6 +520,10 @@ function setupEventListeners() {
 
     // Editor
     document.getElementById('editor-back-btn').addEventListener('click', () => {
+        // Si está grabando, detener y guardar automáticamente
+        if (isRecording && currentSection === 'book-editor') {
+            stopRecordingAutomatically();
+        }
         if (unsavedChanges) {
             showUnsavedChangesPopup(() => {
                 unsavedChanges = false;
@@ -532,7 +536,14 @@ function setupEventListeners() {
     document.getElementById('save-book-btn').addEventListener('click', saveCurrentBook);
     document.getElementById('prev-page-btn').addEventListener('click', previousPage);
     document.getElementById('next-page-btn').addEventListener('click', nextPage);
-    document.getElementById('record-btn').addEventListener('click', toggleRecording);
+    document.getElementById('record-btn').addEventListener('click', () => {
+        // Solo permitir grabar en la sección de edición
+        if (currentSection === 'book-editor') {
+            toggleRecording();
+        } else {
+            showMascot('Solo puedes grabar audio mientras editas un libro.');
+        }
+    });
     document.getElementById('play-btn').addEventListener('click', playPageAudio);
     document.getElementById('delete-audio-btn').addEventListener('click', deletePageAudio);
 
