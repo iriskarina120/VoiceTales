@@ -1578,6 +1578,23 @@ async function createBookVideo(book) {
         async function animatePageTurnDouble(prevLeft, prevRight, nextLeft, nextRight, prevLeftText, prevRightText, nextLeftText, nextRightText) {
             // Efecto de "giro" simple: deslizamiento horizontal
             const steps = 20;
+            // Precargar imágenes si existen
+            let imgPrevLeft = null, imgPrevRight = null, imgNextLeft = null, imgNextRight = null;
+            async function loadImg(src) {
+                if (!src) return null;
+                return await new Promise(res => {
+                    const img = new Image();
+                    img.onload = () => res(img);
+                    img.onerror = () => res(null);
+                    img.src = src;
+                });
+            }
+            [imgPrevLeft, imgPrevRight, imgNextLeft, imgNextRight] = await Promise.all([
+                loadImg(prevLeft),
+                loadImg(prevRight),
+                loadImg(nextLeft),
+                loadImg(nextRight)
+            ]);
             for (let s=0; s<=steps; s++) {
                 const progress = s/steps;
                 ctx.save();
@@ -1586,26 +1603,18 @@ async function createBookVideo(book) {
                 ctx.fillStyle = '#f5e6c8';
                 ctx.fillRect(0,0,canvas.width,canvas.height);
                 // Páginas anteriores (izq/der) se deslizan a la izquierda
-                if (prevLeft) {
-                    const imgL = new Image();
-                    imgL.onload = ()=>ctx.drawImage(imgL, 60-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
-                    imgL.src = prevLeft;
+                if (imgPrevLeft) {
+                    ctx.drawImage(imgPrevLeft, 60-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
                 }
-                if (prevRight) {
-                    const imgR = new Image();
-                    imgR.onload = ()=>ctx.drawImage(imgR, canvas.width/2+10-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
-                    imgR.src = prevRight;
+                if (imgPrevRight) {
+                    ctx.drawImage(imgPrevRight, canvas.width/2+10-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
                 }
                 // Nuevas páginas aparecen desde la derecha
-                if (nextLeft) {
-                    const imgNL = new Image();
-                    imgNL.onload = ()=>ctx.drawImage(imgNL, 60+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
-                    imgNL.src = nextLeft;
+                if (imgNextLeft) {
+                    ctx.drawImage(imgNextLeft, 60+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
                 }
-                if (nextRight) {
-                    const imgNR = new Image();
-                    imgNR.onload = ()=>ctx.drawImage(imgNR, canvas.width/2+10+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
-                    imgNR.src = nextRight;
+                if (imgNextRight) {
+                    ctx.drawImage(imgNextRight, canvas.width/2+10+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
                 }
                 ctx.restore();
                 await new Promise(r=>setTimeout(r,20));
