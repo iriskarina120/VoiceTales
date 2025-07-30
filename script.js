@@ -613,19 +613,115 @@ function showBookEditor(book) {
     displayCurrentPage();
 }
 
+
 function showBookReader(book) {
     hideAllSections();
     document.getElementById('book-reader').classList.remove('hidden');
     currentSection = 'book-reader';
     currentBook = book;
-    currentPage = -1; // Empezar en -1 para mostrar portada
     isReadingBook = true;
     autoPlayMode = true;
     document.getElementById('reader-title').textContent = book.title;
     playClickSound();
-    // Detener música de fondo en lector
     stopBackgroundMusic();
-    displayReaderPages();
+    renderBookAsFlipBook();
+}
+
+// Renderiza el libro en modo flipbook con la apariencia de la maqueta
+function renderBookAsFlipBook() {
+    const readerContainer = document.getElementById('book-reader');
+    // Elimina cualquier flipbook anterior
+    let oldBook = document.getElementById('flipbook-container');
+    if (oldBook) oldBook.remove();
+
+    // Crea el contenedor principal
+    const bookDiv = document.createElement('div');
+    bookDiv.className = 'book';
+    bookDiv.id = 'flipbook-container';
+
+    // Crea el contenedor de páginas
+    const pagesDiv = document.createElement('div');
+    pagesDiv.className = 'pages';
+
+    // Portada
+    const portada = document.createElement('div');
+    portada.className = 'page';
+    portada.id = 'portada';
+    portada.style.backgroundImage = `url('${currentBook.pages[0].background}')`;
+    portada.innerHTML = `
+        <p id="name">${currentBook.title || ''}</p>
+        <p id="title">${currentBook.description || ''}</p>
+        <p id="autor">${currentBook.author || ''}</p>
+    `;
+    pagesDiv.appendChild(portada);
+
+    // Páginas del cuento (pares: 0,1 ...)
+    for (let i = 1; i < currentBook.pages.length; i++) {
+        const page = currentBook.pages[i];
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageDiv.id = `page${i}`;
+        pageDiv.style.backgroundImage = `url('${page.background}')`;
+        // Si es la última página, imprime la fecha de edición
+        if (i === currentBook.pages.length - 1) {
+            pageDiv.innerHTML = `<p id="publicacion">${currentBook.lastEdit ? 'Editado: ' + currentBook.lastEdit : ''}</p>`;
+        } else {
+            // Imprime el texto de la página si existe
+            pageDiv.innerHTML = page.text ? `<div class="page-text-content">${page.text}</div>` : '';
+        }
+        pagesDiv.appendChild(pageDiv);
+    }
+
+    bookDiv.appendChild(pagesDiv);
+    readerContainer.appendChild(bookDiv);
+
+    // Lógica de z-index y flipping
+    const pageEls = bookDiv.getElementsByClassName('page');
+    for (let i = 0; i < pageEls.length; i++) {
+        let page = pageEls[i];
+        if (i % 2 === 0) {
+            page.style.zIndex = (pageEls.length - i);
+        }
+    }
+
+    // Estado de página actual
+    let flipState = 0;
+    // Maneja el flipping y el audio
+    for (let i = 0; i < pageEls.length; i++) {
+        pageEls[i].pageNum = i + 1;
+        pageEls[i].onclick = function() {
+            if (this.pageNum % 2 === 0) {
+                this.classList.remove('flipped');
+                this.previousElementSibling.classList.remove('flipped');
+                flipState = this.pageNum - 2;
+            } else {
+                this.classList.add('flipped');
+                this.nextElementSibling && this.nextElementSibling.classList.add('flipped');
+                flipState = this.pageNum;
+            }
+            // Reproduce audio de la página si existe
+            playFlipBookAudio(flipState);
+        }
+    }
+
+    // Reproduce el audio de la portada al abrir
+    playFlipBookAudio(0);
+}
+
+// Reproduce el audio de la página actual en el flipbook
+function playFlipBookAudio(pageIndex) {
+    if (!currentBook || !currentBook.pages) return;
+    let idx = pageIndex;
+    if (idx < 0) idx = 0;
+    if (idx >= currentBook.pages.length) idx = currentBook.pages.length - 1;
+    const page = currentBook.pages[idx];
+    if (page && page.audio) {
+        if (window.currentAudio) {
+            window.currentAudio.pause();
+        }
+        window.currentAudio = new Audio(page.audio);
+        window.currentAudio.play();
+    }
 }
 
 function hideAllSections() {
