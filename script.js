@@ -1415,7 +1415,23 @@ function deleteBook(index) {
 
 // Función para crear video MP4 del libro
 async function createBookVideo(book) {
+
     try {
+        // Validar datos esenciales antes de iniciar el proceso
+        const portada = (book.pages && Array.isArray(book.pages) && book.pages[0]) ? book.pages[0].background : null;
+        const autor = (typeof book.author === 'string' && book.author.trim()) ? book.author : 'Autor desconocido';
+        const descripcion = (typeof book.description === 'string' && book.description.trim()) ? book.description : 'Mi libro personalizado';
+        if (!portada || portada.length < 5) {
+            playErrorSound();
+            showMascot(`${userName}, tu libro no tiene una imagen de portada válida. Por favor edita el libro y selecciona una imagen para la portada.`);
+            return;
+        }
+        if (!book.title || typeof book.title !== 'string' || book.title.trim().length === 0) {
+            playErrorSound();
+            showMascot(`${userName}, tu libro no tiene título. Por favor edita el libro y ponle un título.`);
+            return;
+        }
+
         showMascot(`${userName}, estoy preparando tu video mágico... ¡Esto puede tomar unos momentos!`, 3000);
         playMagicSound();
 
@@ -1438,7 +1454,6 @@ async function createBookVideo(book) {
             downloadVideoBlob(blob, book.title);
         };
         videoRecorder.start();
-
         // ...
 
         // Dibuja el libro cerrado (portada/contraportada) y espera a que la imagen cargue
@@ -1639,9 +1654,15 @@ async function createBookVideo(book) {
             }
         }
         const pages = [
-            { type: 'cover', img: book.pages[0]?.background, text: book.title, desc: book.description, author },
-            ...book.pages.map((p, i) => ({ type: 'page', img: p.background, text: p.text, audio: p.audio, idx: i })),
-            { type: 'back', img: book.pages[book.pages.length - 1]?.background, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author, lastEdit }
+            { type: 'cover', img: portada, text: book.title, desc: descripcion, author: autor },
+            ...(Array.isArray(book.pages) ? book.pages.map((p, i) => ({
+                type: 'page',
+                img: p && p.background ? p.background : '',
+                text: p && typeof p.text === 'string' ? p.text : '',
+                audio: p && p.audio ? p.audio : undefined,
+                idx: i
+            })) : []),
+            { type: 'back', img: (book.pages && book.pages.length > 0 && book.pages[book.pages.length - 1]?.background) ? book.pages[book.pages.length - 1].background : portada, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author: autor, lastEdit }
         ];
 
         async function renderBookPages() {
