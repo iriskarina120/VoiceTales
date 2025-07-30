@@ -1043,8 +1043,8 @@ function displayReaderPages() {
     rightPage.onclick = null;
 
     if (currentPage === -1) {
-        // Mostrar portada
-        showBookCover();
+        // Mostrar solo la imagen de la portada (libro cerrado)
+        showClosedBookCover();
     } else if (currentPage >= currentBook.pages.length) {
         // Mostrar contraportada y finalizar
         showBookBackCover();
@@ -1052,6 +1052,62 @@ function displayReaderPages() {
         // Mostrar páginas normales
         showRegularPages();
     }
+// Mostrar solo la imagen de la portada (libro cerrado)
+function showClosedBookCover() {
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    leftPage.style.display = 'none';
+    rightPage.style.display = 'flex';
+    const rightBg = rightPage.querySelector('.page-background-right');
+    const rightText = rightPage.querySelector('.page-text-right');
+    const portadaUrl = currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '';
+    rightBg.style.backgroundImage = `url(${portadaUrl})`;
+    rightBg.style.backgroundSize = 'cover';
+    rightBg.style.backgroundPosition = 'center';
+    rightText.innerHTML = '';
+    // Efecto de libro cerrado: oscurecer bordes y sombra
+    rightBg.style.boxShadow = '0 8px 32px 0 rgba(0,0,0,0.25), 0 1.5px 0 #bfa76a';
+    rightBg.style.borderRadius = '16px';
+    rightBg.style.transition = 'box-shadow 0.5s, border-radius 0.5s, transform 0.6s cubic-bezier(0.4,0.2,0.2,1)';
+    rightBg.style.transform = 'rotateY(0deg) scale(1)';
+    // Overlay de título y autor centrado
+    const overlay = document.createElement('div');
+    overlay.className = 'cover-overlay';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.display = 'flex';
+    overlay.style.flexDirection = 'column';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.background = 'rgba(255,255,255,0.08)';
+    overlay.innerHTML = `
+        <h1 style="font-size:2.2rem;color:#333;text-shadow:2px 2px 8px #fff,0 2px 8px #0002; margin-bottom:0.7rem;">${currentBook.title}</h1>
+        <p style="font-size:1.1rem;color:#555;text-shadow:1px 1px 2px #fff; margin-bottom:0.5rem;">${currentBook.description}</p>
+        <p style="font-size:1rem;color:#666;">Autor: ${currentBook.author || 'Autor desconocido'}</p>
+        <p style="margin-top:2rem;font-style:italic;color:#888;">Toca para abrir el libro</p>
+    `;
+    // Limpiar overlays previos
+    Array.from(rightBg.children).forEach(child => rightBg.removeChild(child));
+    rightBg.appendChild(overlay);
+    // Animación de apertura al hacer click
+    rightPage.onclick = () => {
+        rightBg.style.transform = 'rotateY(-60deg) scale(0.96)';
+        rightBg.style.boxShadow = '0 2px 8px 0 rgba(0,0,0,0.12)';
+        setTimeout(() => {
+            currentPage = 0;
+            displayReaderPages();
+        }, 500);
+    };
+    // Permitir reproducir audio de la portada si existe
+    if (currentBook.pages[0].audio) {
+        if (currentAudio) { currentAudio.pause(); }
+        currentAudio = new Audio(currentBook.pages[0].audio);
+        currentAudio.play();
+    }
+}
 
     // Actualizar barra de progreso
     updateReadingProgress();
@@ -1165,7 +1221,7 @@ function showRegularPages() {
 
     // Mostrar páginas de dos en dos, sin repetir la portada
     // currentPage = 1 es página 1 (imagen 2), etc.
-    if (currentPage < 1) {
+    if (currentPage < 0) {
         leftPage.style.display = 'none';
         rightPage.style.display = 'none';
         return;
@@ -1184,8 +1240,9 @@ function showRegularPages() {
             if (currentPage > 1) {
                 currentPage -= 2;
                 displayReaderPages();
-            } else if (currentPage === 1) {
-                currentPage = 0;
+            } else if (currentPage === 0) {
+                // Volver a la portada cerrada
+                currentPage = -1;
                 displayReaderPages();
             }
         };
