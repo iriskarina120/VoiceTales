@@ -1421,9 +1421,47 @@ async function createBookVideo(book) {
         };
         videoRecorder.start();
 
-        // Utilidades visuales
-        function drawBookFrame() {
-            // Fondo libro abierto
+        // ...
+
+        // Dibuja el libro cerrado (portada)
+        function drawClosedBook(coverImg, title, author, desc) {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Sombra libro
+            ctx.fillStyle = '#bfa76f';
+            ctx.fillRect(canvas.width/2-220, 120, 440, 480);
+            // Tapa
+            ctx.fillStyle = '#f5e6c8';
+            ctx.fillRect(canvas.width/2-200, 140, 400, 440);
+            // Imagen portada
+            if (coverImg) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, canvas.width/2-180, 160, 360, 220);
+                };
+                img.src = coverImg;
+            }
+            // Título
+            ctx.font = 'bold 40px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#4a90e2';
+            ctx.textAlign = 'center';
+            ctx.fillText(title, canvas.width/2, 410);
+            // Autor
+            ctx.font = '28px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Autor: ' + (author||''), canvas.width/2, 450);
+            // Descripción
+            ctx.font = '22px "Comic Sans MS", cursive';
+            ctx.fillStyle = '#888';
+            ctx.fillText(desc||'', canvas.width/2, 490);
+            ctx.restore();
+        }
+
+        // Dibuja el libro abierto (doble página)
+        async function drawOpenBook(left, right, leftText, rightText) {
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Fondo
             ctx.fillStyle = '#f5e6c8';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             // Sombra central
@@ -1433,74 +1471,142 @@ async function createBookVideo(book) {
             ctx.strokeStyle = '#bfa76f';
             ctx.lineWidth = 12;
             ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
-        }
-
-        function drawPageImage(imgUrl, side = 'right') {
-            return new Promise(resolve => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    // Página izquierda o derecha
-                    const x = side === 'left' ? 60 : canvas.width / 2 + 10;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(x, 60);
-                    ctx.lineTo(x + canvas.width / 2 - 70, 60);
-                    ctx.lineTo(x + canvas.width / 2 - 70, canvas.height - 60);
-                    ctx.lineTo(x, canvas.height - 60);
-                    ctx.closePath();
-                    ctx.clip();
-                    ctx.drawImage(img, x, 60, canvas.width / 2 - 70, canvas.height - 120);
-                    ctx.restore();
-                    resolve();
-                };
-                img.onerror = () => resolve();
-                img.src = imgUrl;
-            });
-        }
-
-        function drawPageText(text, side = 'right') {
-            ctx.save();
-            ctx.font = 'bold 32px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#333';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 4;
-            const x = side === 'left' ? canvas.width / 4 : 3 * canvas.width / 4;
-            const y = canvas.height - 120;
-            // Dividir texto en líneas
-            const maxWidth = canvas.width / 2 - 100;
-            let words = (text || '').split(' '), line = '', lines = [];
-            for (let w of words) {
-                let test = line + w + ' ';
-                if (ctx.measureText(test).width > maxWidth && line) {
-                    lines.push(line); line = w + ' ';
-                } else { line = test; }
+            // Imagen izquierda
+            if (left) {
+                const imgL = new Image();
+                await new Promise(res => {
+                    imgL.onload = () => {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(60, 60);
+                        ctx.lineTo(canvas.width/2-10, 60);
+                        ctx.lineTo(canvas.width/2-10, canvas.height-60);
+                        ctx.lineTo(60, canvas.height-60);
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.drawImage(imgL, 60, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.restore();
+                        res();
+                    };
+                    imgL.onerror = res;
+                    imgL.src = left;
+                });
             }
-            if (line) lines.push(line);
-            lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + 40 * i));
+            // Imagen derecha
+            if (right) {
+                const imgR = new Image();
+                await new Promise(res => {
+                    imgR.onload = () => {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(canvas.width/2+10, 60);
+                        ctx.lineTo(canvas.width-60, 60);
+                        ctx.lineTo(canvas.width-60, canvas.height-60);
+                        ctx.lineTo(canvas.width/2+10, canvas.height-60);
+                        ctx.closePath();
+                        ctx.clip();
+                        ctx.drawImage(imgR, canvas.width/2+10, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.restore();
+                        res();
+                    };
+                    imgR.onerror = res;
+                    imgR.src = right;
+                });
+            }
+            // Texto izquierda
+            if (leftText) {
+                ctx.save();
+                ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 4;
+                const x = canvas.width/4;
+                const y = canvas.height - 120;
+                const maxWidth = canvas.width/2-100;
+                let words = (leftText||'').split(' '), line = '', lines = [];
+                for (let w of words) {
+                    let test = line + w + ' ';
+                    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
+                }
+                if (line) lines.push(line);
+                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                ctx.restore();
+            }
+            // Texto derecha
+            if (rightText) {
+                ctx.save();
+                ctx.font = 'bold 32px "Comic Sans MS", cursive';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 4;
+                const x = 3*canvas.width/4;
+                const y = canvas.height - 120;
+                const maxWidth = canvas.width/2-100;
+                let words = (rightText||'').split(' '), line = '', lines = [];
+                for (let w of words) {
+                    let test = line + w + ' ';
+                    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
+                }
+                if (line) lines.push(line);
+                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                ctx.restore();
+            }
             ctx.restore();
         }
 
-        // Animación de cambio de página (1s, efecto "giro")
-        async function animatePageTurn(fromImg, toImg, fromText, toText) {
-            const steps = 20;
-            for (let s = 0; s <= steps; s++) {
-                const progress = s / steps;
-                drawBookFrame();
-                // Página izquierda: la que se va
-                if (fromImg) await drawPageImage(fromImg, 'left', 1 - progress);
-                if (fromText) drawPageText(fromText, 'left', 1 - progress);
-                // Página derecha: la que llega
-                if (toImg) await drawPageImage(toImg, 'right', progress);
-                if (toText) drawPageText(toText, 'right', progress);
-                await new Promise(r => setTimeout(r, 50));
+        // Animación de apertura de libro
+        async function animateBookOpening(coverImg, title, author, desc) {
+            // De libro cerrado a abierto (simple fade)
+            for (let t=0; t<=1; t+=0.05) {
+                ctx.save();
+                ctx.globalAlpha = 1;
+                drawClosedBook(coverImg, title, author, desc);
+                ctx.globalAlpha = t;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
             }
         }
 
-        // Portada y contraportada especiales
-        const lastEdit = book.lastEdit || new Date().toLocaleDateString();
-        const author = book.author || userName || 'Autor desconocido';
+        // Animación de paso de página (doble página)
+        async function animatePageTurnDouble(prevLeft, prevRight, nextLeft, nextRight, prevLeftText, prevRightText, nextLeftText, nextRightText) {
+            // Efecto de "giro" simple: deslizamiento horizontal
+            const steps = 20;
+            for (let s=0; s<=steps; s++) {
+                const progress = s/steps;
+                ctx.save();
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                // Fondo
+                ctx.fillStyle = '#f5e6c8';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                // Páginas anteriores (izq/der) se deslizan a la izquierda
+                if (prevLeft) {
+                    const imgL = new Image();
+                    imgL.onload = ()=>ctx.drawImage(imgL, 60-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    imgL.src = prevLeft;
+                }
+                if (prevRight) {
+                    const imgR = new Image();
+                    imgR.onload = ()=>ctx.drawImage(imgR, canvas.width/2+10-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    imgR.src = prevRight;
+                }
+                // Nuevas páginas aparecen desde la derecha
+                if (nextLeft) {
+                    const imgNL = new Image();
+                    imgNL.onload = ()=>ctx.drawImage(imgNL, 60+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    imgNL.src = nextLeft;
+                }
+                if (nextRight) {
+                    const imgNR = new Image();
+                    imgNR.onload = ()=>ctx.drawImage(imgNR, canvas.width/2+10+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    imgNR.src = nextRight;
+                }
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
+            }
+        }
         const pages = [
             { type: 'cover', img: book.pages[0]?.background, text: book.title, desc: book.description, author },
             ...book.pages.map((p, i) => ({ type: 'page', img: p.background, text: p.text, audio: p.audio, idx: i })),
@@ -1508,71 +1614,61 @@ async function createBookVideo(book) {
         ];
 
         async function renderBookPages() {
-            // Portada
-            drawBookFrame();
-            await drawPageImage(pages[0].img, 'right');
-            ctx.save();
-            ctx.font = 'bold 64px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#4a90e2';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 8;
-            ctx.fillText(pages[0].text, 3 * canvas.width / 4, 200);
-            ctx.font = '32px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#333';
-            ctx.shadowBlur = 0;
-            ctx.fillText(pages[0].desc || '', 3 * canvas.width / 4, 260);
-            ctx.font = '28px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#666';
-            ctx.fillText('Autor: ' + pages[0].author, 3 * canvas.width / 4, 320);
-            ctx.restore();
-            await new Promise(r => setTimeout(r, 2000));
+            // 1. Libro cerrado (portada)
+            drawClosedBook(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
+            await new Promise(r=>setTimeout(r, 1500));
 
-            // Páginas normales
-            for (let i = 1; i < pages.length - 1; i++) {
+            // 2. Animación de apertura
+            await animateBookOpening(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
+            await new Promise(r=>setTimeout(r, 500));
+
+            // 3. Portadilla (igual a portada, pero libro abierto)
+            await drawOpenBook(pages[0].img, null, pages[0].text, pages[0].author);
+            await new Promise(r=>setTimeout(r, 1200));
+
+            // 4. Páginas dobles de la historia
+            let pagePairs = [];
+            for (let i=1; i<pages.length-1; i+=2) {
+                pagePairs.push([pages[i], pages[i+1]||null]);
+            }
+            let prevLeft = pages[0].img, prevRight = null, prevLeftText = '', prevRightText = '';
+            for (let pair of pagePairs) {
+                const left = pair[0], right = pair[1];
                 // Animación de paso de página
-                await animatePageTurn(pages[i - 1].img, pages[i].img, pages[i - 1].text, pages[i].text);
-                // Mostrar página derecha (nueva)
-                drawBookFrame();
-                await drawPageImage(pages[i].img, 'right');
-                drawPageText(pages[i].text, 'right');
-                // Sincronizar audio
-                if (pages[i].audio) {
-                    const audio = new Audio(pages[i].audio);
-                    const audioSource = audioContext.createMediaElementSource(audio);
-                    audioSource.connect(audioDestination);
-                    await new Promise(res => {
-                        audio.onended = res;
-                        audio.play().catch(() => res());
-                    });
-                } else {
-                    await new Promise(r => setTimeout(r, 3500));
+                await animatePageTurnDouble(prevLeft, prevRight, left?.img, right?.img, prevLeftText, prevRightText, left?.text, right?.text);
+                // Mostrar doble página
+                await drawOpenBook(left?.img, right?.img, left?.text, right?.text);
+                // Reproducir audio de ambas páginas, en orden, solo una vez cada una
+                if (left?.audio) {
+                    const audioL = new Audio(left.audio);
+                    const audioSourceL = audioContext.createMediaElementSource(audioL);
+                    audioSourceL.connect(audioDestination);
+                    await new Promise(res=>{audioL.onended=res; audioL.play().catch(()=>res());});
                 }
+                if (right?.audio) {
+                    const audioR = new Audio(right.audio);
+                    const audioSourceR = audioContext.createMediaElementSource(audioR);
+                    audioSourceR.connect(audioDestination);
+                    await new Promise(res=>{audioR.onended=res; audioR.play().catch(()=>res());});
+                }
+                await new Promise(r=>setTimeout(r, 500));
+                prevLeft = left?.img; prevRight = right?.img; prevLeftText = left?.text; prevRightText = right?.text;
             }
 
-            // Contraportada
-            await animatePageTurn(pages[pages.length - 2].img, pages[pages.length - 1].img, pages[pages.length - 2].text, pages[pages.length - 1].text);
-            drawBookFrame();
-            await drawPageImage(pages[pages.length - 1].img, 'left');
-            ctx.save();
-            ctx.font = 'bold 64px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#4a90e2';
-            ctx.textAlign = 'center';
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 8;
-            ctx.fillText(pages[pages.length - 1].text, canvas.width / 4, 200);
-            ctx.font = '32px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#333';
-            ctx.shadowBlur = 0;
-            ctx.fillText(pages[pages.length - 1].desc || '', canvas.width / 4, 260);
-            ctx.font = '28px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#666';
-            ctx.fillText('Autor: ' + pages[pages.length - 1].author, canvas.width / 4, 320);
-            ctx.font = '24px "Comic Sans MS", cursive';
-            ctx.fillStyle = '#888';
-            ctx.fillText('Última edición: ' + pages[pages.length - 1].lastEdit, canvas.width / 4, 370);
-            ctx.restore();
-            await new Promise(r => setTimeout(r, 2000));
+            // 5. Cierre del libro mostrando contraportada
+            // (Animación simple: fundido a libro cerrado con contraportada)
+            for (let t=0; t<=1; t+=0.05) {
+                ctx.save();
+                ctx.globalAlpha = 1-t;
+                await drawOpenBook(prevLeft, prevRight, prevLeftText, prevRightText);
+                ctx.globalAlpha = t;
+                drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, pages[pages.length-1].desc);
+                ctx.restore();
+                await new Promise(r=>setTimeout(r,20));
+            }
+            // Contraportada con fecha
+            drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, 'Última edición: '+(pages[pages.length-1].lastEdit||''));
+            await new Promise(r=>setTimeout(r, 1500));
 
             setTimeout(() => {
                 videoRecorder.stop();
