@@ -2070,3 +2070,5 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
 
 
+
+
