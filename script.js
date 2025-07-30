@@ -1064,52 +1064,24 @@ function showBookCover() {
     // Ocultar página izquierda
     leftPage.style.display = 'none';
 
-    // Mostrar portada en página derecha con apariencia de libro real y animación de apertura
+    // Mostrar portada en página derecha
     const rightBg = rightPage.querySelector('.page-background-right');
     const rightText = rightPage.querySelector('.page-text-right');
 
     // Usar solo la primera imagen como portada
-    const portadaUrl = currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '';
-    rightBg.style.backgroundImage = 'none';
+    rightBg.style.backgroundImage = `url(${currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : ''})`;
     rightText.innerHTML = `
-        <div class="book-cover-3d book-cover-anim" id="book-cover-anim" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
-            <div class="book-cover-outer">
-                <div class="book-cover-lomo"></div>
-                <div class="book-cover-image" style="background-image: url('${portadaUrl}');">
-                    <div class="book-cover-content">
-                        <h1 class="book-cover-title">${currentBook.title}</h1>
-                        <p class="book-cover-desc">${currentBook.description}</p>
-                        <p class="book-cover-author">Autor: ${currentBook.author || 'Autor desconocido'}</p>
-                        <p class="book-cover-tap">Toca para abrir el libro</p>
-                    </div>
-                </div>
-            </div>
+        <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">${currentBook.title}</h1>
+            <p style="font-size: 1.2rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">${currentBook.description}</p>
+            <p style="font-size: 1.1rem; color: #555; margin-top: 0.5rem;">Autor: ${currentBook.author || 'Autor desconocido'}</p>
+            <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para comenzar</p>
         </div>
     `;
     rightPage.style.display = 'flex';
-
-    // Animación de apertura de libro (solo portada)
-    setTimeout(() => {
-        const coverAnim = document.getElementById('book-cover-anim');
-        if (coverAnim) {
-            coverAnim.classList.add('open');
-        }
-    }, 100);
-
     rightPage.onclick = () => {
-        // Animación de apertura antes de pasar a la doble página
-        const coverAnim = document.getElementById('book-cover-anim');
-        if (coverAnim) {
-            coverAnim.classList.remove('open');
-            coverAnim.classList.add('close');
-            setTimeout(() => {
-                currentPage = 1;
-                displayReaderPages();
-            }, 500);
-        } else {
-            currentPage = 1;
-            displayReaderPages();
-        }
+        currentPage = 1;
+        displayReaderPages();
     };
     // Permitir reproducir audio de la portada si existe
     if (currentBook.pages[0].audio) {
@@ -2112,5 +2084,3 @@ if (location.hostname === 'localhost' || location.hostname.includes('repl')) {
 }
 
 console.log('🎧 AudioTale cargado correctamente - ¡Listo para crear cuentos mágicos!');
-
-
