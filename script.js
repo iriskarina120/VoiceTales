@@ -1068,11 +1068,13 @@ function showBookCover() {
     const rightBg = rightPage.querySelector('.page-background-right');
     const rightText = rightPage.querySelector('.page-text-right');
 
-    rightBg.style.backgroundImage = `url(${currentBook.pages[0].background})`;
+    // Siempre usar la primera imagen como portada
+    rightBg.style.backgroundImage = `url(${currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : ''})`;
     rightText.innerHTML = `
         <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
             <h1 style="font-size: 2rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">${currentBook.title}</h1>
             <p style="font-size: 1.2rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">${currentBook.description}</p>
+            <p style="font-size: 1.1rem; color: #555; margin-top: 0.5rem;">Autor: ${currentBook.author || 'Autor desconocido'}</p>
             <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para comenzar</p>
         </div>
     `;
@@ -1091,11 +1093,24 @@ function showBookBackCover() {
     const leftBg = leftPage.querySelector('.page-background-left');
     const leftText = leftPage.querySelector('.page-text-left');
 
-    leftBg.style.backgroundImage = `url(${currentBook.pages[currentBook.pages.length - 1].background})`;
+    // Siempre usar la primera imagen como portada/contraportada si no hay otra
+    const backImg = (currentBook.pages && currentBook.pages.length > 0 && currentBook.pages[currentBook.pages.length - 1].background) ? currentBook.pages[currentBook.pages.length - 1].background : (currentBook.pages && currentBook.pages[0] && currentBook.pages[0].background ? currentBook.pages[0].background : '');
+    leftBg.style.backgroundImage = `url(${backImg})`;
+    // Fecha de edición
+    let fechaEdicion = '';
+    if (currentBook.lastEdit) {
+        fechaEdicion = `Última edición: ${currentBook.lastEdit}`;
+    } else {
+        // Si no existe, usar fecha de guardado o creación
+        const now = new Date();
+        fechaEdicion = `Última edición: ${now.toLocaleDateString()}`;
+    }
     leftText.innerHTML = `
         <div style="text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
             <h2 style="font-size: 1.8rem; margin-bottom: 1rem; color: #333; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">¡Fin!</h2>
             <p style="font-size: 1.1rem; color: #666; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">¡Has terminado de leer "${currentBook.title}"!</p>
+            <p style="font-size: 1.1rem; color: #555; margin-top: 0.5rem;">Autor: ${currentBook.author || 'Autor desconocido'}</p>
+            <p style="font-size: 1.1rem; color: #888; margin-top: 0.5rem;">${fechaEdicion}</p>
             <p style="margin-top: 2rem; font-style: italic; color: #888;">Toca para cerrar</p>
         </div>
     `;
@@ -1685,7 +1700,7 @@ async function createBookVideo(book) {
                 audio: p && p.audio ? p.audio : undefined,
                 idx: i
             })) : []),
-            { type: 'back', img: (book.pages && book.pages.length > 0 && book.pages[book.pages.length - 1]?.background) ? book.pages[book.pages.length - 1].background : portada, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author: autor, lastEdit }
+            { type: 'back', img: (book.pages && book.pages.length > 0 && book.pages[0]?.background) ? book.pages[0].background : portada, text: '¡Fin!', desc: `Has terminado de leer "${book.title}"`, author: autor, lastEdit: book.lastEdit || (new Date()).toLocaleDateString() }
         ];
 
         async function renderBookPages() {
