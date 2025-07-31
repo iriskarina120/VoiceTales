@@ -1239,64 +1239,30 @@ function playNextAudioInQueue() {
 
         currentAudio = new Audio(audioQueue[currentAudioIndex]);
         currentAudio.onended = () => {
-            currentAudioIndex++;
-            setTimeout(() => {
-                playNextAudioInQueue();
-            }, 500);
-        };
+    if (!currentBook) return;
 
-        currentAudio.play();
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+
+    // Limpiar eventos anteriores
+    leftPage.onclick = null;
+    rightPage.onclick = null;
+
+    // Portada (solo página derecha, página 0)
+    if (currentPage === 0) {
+        showBookCover();
+    } else if (currentPage === 1) {
+        // Dorso de portada a la izquierda, página 1 a la derecha
+        showBackOfCoverAndPage1();
+    } else if (currentPage >= currentBook.pages.length) {
+        showBookBackCover();
+    } else {
+        showRegularPages();
     }
-}
 
-function readerPreviousPage() {
-    if (currentPage === 1) {
-        currentPage = 0;
-        displayReaderPages();
-    } else if (currentPage > 1) {
-        currentPage -= 2;
-        displayReaderPages();
-    }
-}
 
-function readerNextPage() {
-    if (currentPage === 0 && currentBook.pages.length > 1) {
-        currentPage = 1;
-        displayReaderPages();
-    } else if (currentPage + 2 < currentBook.pages.length) {
-        currentPage += 2;
-        displayReaderPages();
-    } else if (currentPage + 1 < currentBook.pages.length) {
-        // Si hay una página impar final
-        currentPage += 1;
-        displayReaderPages();
-    } else if (currentPage + 2 >= currentBook.pages.length) {
-        // Ir a contraportada
-        currentPage = currentBook.pages.length;
-        displayReaderPages();
-    }
-}
-
-function playReaderAudio() {
-    const page = currentBook.pages[currentPage];
-    if (page?.audio) {
-        if (currentAudio) {
-            currentAudio.pause();
-        }
-        currentAudio = new Audio(page.audio);
-        currentAudio.play();
-
-        // Auto-advance si está en modo auto-play
-        if (autoPlayMode) {
-            currentAudio.onended = () => {
-                setTimeout(() => {
-                    if (currentPage + 2 < currentBook.pages.length) {
-                        readerNextPage();
-                    }
-                }, 1000);
-            };
-        }
-    }
+    // Actualizar barra de progreso
+    updateReadingProgress();
 }
 
 function toggleAutoPlay() {
