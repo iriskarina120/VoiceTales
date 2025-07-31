@@ -1239,30 +1239,13 @@ function playNextAudioInQueue() {
 
         currentAudio = new Audio(audioQueue[currentAudioIndex]);
         currentAudio.onended = () => {
-    if (!currentBook) return;
-
-    const leftPage = document.getElementById('page-left');
-    const rightPage = document.getElementById('page-right');
-
-    // Limpiar eventos anteriores
-    leftPage.onclick = null;
-    rightPage.onclick = null;
-
-    // Portada (solo página derecha, página 0)
-    if (currentPage === 0) {
-        showBookCover();
-    } else if (currentPage === 1) {
-        // Dorso de portada a la izquierda, página 1 a la derecha
-        showBackOfCoverAndPage1();
-    } else if (currentPage >= currentBook.pages.length) {
-        showBookBackCover();
-    } else {
-        showRegularPages();
+            currentAudioIndex++;
+            setTimeout(() => {
+                playNextAudioInQueue();
+            }, 500);
+        };
+        currentAudio.play();
     }
-
-
-    // Actualizar barra de progreso
-    updateReadingProgress();
 }
 
 function toggleAutoPlay() {
