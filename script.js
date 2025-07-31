@@ -1281,6 +1281,9 @@ function initializeCreator() {
     for (let i = 0; i < 3; i++) {
         addNewPage();
     }
+    // Mostrar sección si estaba oculta
+    document.getElementById('book-creator').classList.remove('hidden');
+}
 }
 
 function addNewPage() {
@@ -1887,19 +1890,6 @@ function deleteUserImage(index) {
     }
 }
 
-function initializeCreator() {
-    document.getElementById('book-title-input').value = '';
-    document.getElementById('book-description').value = '';
-    document.getElementById('page-creator').innerHTML = '';
-
-    // Mostrar imágenes del usuario
-    displayUserImages();
-
-    // Agregar páginas iniciales
-    for (let i = 0; i < 3; i++) {
-        addNewPage();
-    }
-}
 
 // Persistencia de datos
 function saveUserData() {
