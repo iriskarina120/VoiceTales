@@ -66,6 +66,98 @@ const IMAGE_GALLERY = {
         'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800',
         'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
         'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800',
+/**
+ * Muestra el libro en formato flipbook usando la plantilla proporcionada.
+ * Solo para libros personalizados (Mis Libros).
+ */
+function showBookFlipTemplate(book) {
+    const readerContainer = document.getElementById('book-reader');
+    if (!readerContainer) return;
+
+    // Limpiar contenido anterior
+    readerContainer.innerHTML = '';
+
+    // Crear contenedor principal del libro
+    const bookDiv = document.createElement('div');
+    bookDiv.className = 'book';
+
+    // Contenedor de páginas
+    const pagesDiv = document.createElement('div');
+    pagesDiv.className = 'pages';
+
+    // Portada
+    const portadaDiv = document.createElement('div');
+    portadaDiv.className = 'page';
+    portadaDiv.id = 'portada';
+    portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
+    portadaDiv.innerHTML = `
+        <div id="name">${book.title}</div>
+        <div id="title">${book.description || ''}</div>
+        <div id="autor">${book.author || 'Autor desconocido'}</div>
+    `;
+    pagesDiv.appendChild(portadaDiv);
+
+    // Páginas del libro
+    for (let i = 1; i < book.pages.length; i++) {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageDiv.id = `page${i}`;
+        pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
+        // Texto de la página
+        pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
+        // Audio de la página (si existe)
+        if (book.pages[i]?.audio) {
+            const audioBtn = document.createElement('button');
+            audioBtn.textContent = '🔊 Escuchar';
+            audioBtn.onclick = (e) => {
+                e.stopPropagation();
+                const audio = new Audio(book.pages[i].audio);
+                audio.play();
+            };
+            pageDiv.appendChild(audioBtn);
+        }
+        pagesDiv.appendChild(pageDiv);
+    }
+
+    // Contraportada (última página)
+    const backDiv = document.createElement('div');
+    backDiv.className = 'page';
+    backDiv.id = 'publicacion';
+    backDiv.style.backgroundImage = `url('${book.pages[book.pages.length-1]?.background || book.pages[0]?.background || ''}')`;
+    // Fecha de creación/edición
+    const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
+    backDiv.innerHTML = `
+        <div id="publicacion">Publicado: ${fecha}</div>
+        <div id="autor">${book.author || 'Autor desconocido'}</div>
+    `;
+    pagesDiv.appendChild(backDiv);
+
+    bookDiv.appendChild(pagesDiv);
+    readerContainer.appendChild(bookDiv);
+
+    // Aplicar lógica de flipbook
+    setTimeout(() => {
+        const pages = bookDiv.getElementsByClassName('page');
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            if (i % 2 === 0) {
+                page.style.zIndex = (pages.length - i);
+            }
+        }
+        for (let i = 0; i < pages.length; i++) {
+            pages[i].pageNum = i + 1;
+            pages[i].onclick = function () {
+                if (this.pageNum % 2 === 0) {
+                    this.classList.remove('flipped');
+                    this.previousElementSibling.classList.remove('flipped');
+                } else {
+                    this.classList.add('flipped');
+                    this.nextElementSibling.classList.add('flipped');
+                }
+            };
+        }
+    }, 100);
+}
         'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'
     ]
 };
