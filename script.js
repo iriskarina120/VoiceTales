@@ -1134,6 +1134,8 @@ function displayReaderPages() {
     leftPage.onclick = null;
     rightPage.onclick = null;
 
+    
+
     if (currentPage === -1) {
         // Mostrar portada
         showBookCover();
