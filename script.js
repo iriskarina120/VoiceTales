@@ -40,142 +40,105 @@ const IMAGE_GALLERY = {
         'https://images.unsplash.com/photo-1582967788606-a171c1080cb0?w=800',
         'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800'
     ],
-    espacio: [
-        'https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=800',
-        'https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?w=800',
-        'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=800',
-        'https://images.unsplash.com/photo-1614732414444-096040ec8cfb?w=800',
-        'https://images.unsplash.com/photo-1538414915055-29d20b820b2b?w=800'
-    ],
-    fantasia: [
-        'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800',
-        'https://images.unsplash.com/photo-1563306406-e66174fa3787?w=800',
-        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
-        'https://images.unsplash.com/photo-1520637836862-4d197d17c95a?w=800',
-        'https://images.unsplash.com/photo-1585411241865-ec2858c7de80?w=800'
-    ],
-    animales: [
-        'https://images.unsplash.com/photo-1474511320723-9a56873867b5?w=800',
-        'https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=800',
-        'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800',
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-        'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=800'
-    ],
     ciudad: [
         'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800',
         'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800',
         'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
-        'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800',
-        /**
-         * Muestra el libro en formato flipbook usando la plantilla proporcionada.
-         * Solo para libros personalizados (Mis Libros).
-         */
-        function showBookFlipTemplate(book) {
-            const readerContainer = document.getElementById('book-reader');
-            if (!readerContainer) return;
+        'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800'
+    ]
+};
 
-            // Limpiar contenido anterior
-            readerContainer.innerHTML = '';
+// Muestra el libro en formato flipbook usando la plantilla proporcionada. Solo para libros personalizados (Mis Libros).
+function showBookFlipTemplate(book) {
+    const readerContainer = document.getElementById('book-reader');
+    if (!readerContainer) return;
 
-            // Crear contenedor principal del libro
-            const bookDiv = document.createElement('div');
-            bookDiv.className = 'book';
+    // Limpiar contenido anterior
+    readerContainer.innerHTML = '';
 
-            // Contenedor de páginas
-            const pagesDiv = document.createElement('div');
-            pagesDiv.className = 'pages';
+    // Ocultar páginas dobles si existen
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    if (leftPage) leftPage.style.display = 'none';
+    if (rightPage) rightPage.style.display = 'none';
 
-            // Portada
-            const portadaDiv = document.createElement('div');
-            portadaDiv.className = 'page';
-            portadaDiv.id = 'portada';
-            portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
-            portadaDiv.innerHTML = `
+    // Crear contenedor principal del libro
+    const bookDiv = document.createElement('div');
+    bookDiv.className = 'book';
+
+    // Contenedor de páginas
+    const pagesDiv = document.createElement('div');
+    pagesDiv.className = 'pages';
+
+    // Portada
+    const portadaDiv = document.createElement('div');
+    portadaDiv.className = 'page';
+    portadaDiv.id = 'portada';
+    portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
+    portadaDiv.innerHTML = `
         <div id="name">${book.title}</div>
         <div id="title">${book.description || ''}</div>
         <div id="autor">${book.author || 'Autor desconocido'}</div>
     `;
-            pagesDiv.appendChild(portadaDiv);
+    pagesDiv.appendChild(portadaDiv);
 
-            // Páginas del libro
-            for (let i = 1; i < book.pages.length; i++) {
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'page';
-                pageDiv.id = `page${i}`;
-                pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
-                // Texto de la página
-                pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
-                // Audio de la página (si existe)
-                if (book.pages[i]?.audio) {
-                    const readerContainer = document.getElementById('book-reader');
-                    if (!readerContainer) return;
+    // Páginas del libro
+    for (let i = 1; i < book.pages.length; i++) {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageDiv.id = `page${i}`;
+        pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
+        // Texto de la página
+        pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
+        // Audio de la página (si existe)
+        if (book.pages[i]?.audio) {
+            const audioBtn = document.createElement('button');
+            audioBtn.textContent = '🔊 Escuchar';
+            audioBtn.onclick = (e) => {
+                e.stopPropagation();
+                const audio = new Audio(book.pages[i].audio);
+                audio.play();
+            };
+            pageDiv.appendChild(audioBtn);
+        }
+        pagesDiv.appendChild(pageDiv);
+    }
 
-                    // Limpiar contenido anterior
-                    readerContainer.innerHTML = '';
-
-                    // Ocultar páginas dobles si existen
-                    const leftPage = document.getElementById('page-left');
-                    const rightPage = document.getElementById('page-right');
-                    if (leftPage) leftPage.style.display = 'none';
-                    if (rightPage) rightPage.style.display = 'none';
-
-                    // Crear contenedor principal del libro
-                    const bookDiv = document.createElement('div');
-                    bookDiv.className = 'book';
-
-                    // Contenedor de páginas
-                    const pagesDiv = document.createElement('div');
-                    pagesDiv.className = 'pages';
-
-                    // Portada
-                    const portadaDiv = document.createElement('div');
-                    portadaDiv.className = 'page';
-                    portadaDiv.id = 'portada';
-                    portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
-                    portadaDiv.innerHTML = `
-        <div id="name">${book.title}</div>
-        <div id="title">${book.description || ''}</div>
-        <div id="autor">${book.author || 'Autor desconocido'}</div>
-    `;
-                    pagesDiv.appendChild(portadaDiv);
-
-                    // Páginas del libro
-                    for (let i = 1; i < book.pages.length; i++) {
-                        const pageDiv = document.createElement('div');
-                        pageDiv.className = 'page';
-                        pageDiv.id = `page${i}`;
-                        pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
-                        // Texto de la página
-                        pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
-                        // Audio de la página (si existe)
-                        if (book.pages[i]?.audio) {
-                            const audioBtn = document.createElement('button');
-                            audioBtn.textContent = '🔊 Escuchar';
-                            audioBtn.onclick = (e) => {
-                                e.stopPropagation();
-                                const audio = new Audio(book.pages[i].audio);
-                                audio.play();
-                            };
-                            pageDiv.appendChild(audioBtn);
-                        }
-                        pagesDiv.appendChild(pageDiv);
-                    }
-
-                    // Contraportada (última página)
-                    const backDiv = document.createElement('div');
-                    backDiv.className = 'page';
-                    backDiv.id = 'publicacion';
-                    backDiv.style.backgroundImage = `url('${book.pages[book.pages.length - 1]?.background || book.pages[0]?.background || ''}')`;
-                    // Fecha de creación/edición
-                    const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
-                    backDiv.innerHTML = `
+    // Contraportada (última página)
+    const backDiv = document.createElement('div');
+    backDiv.className = 'page';
+    backDiv.id = 'publicacion';
+    backDiv.style.backgroundImage = `url('${book.pages[book.pages.length - 1]?.background || book.pages[0]?.background || ''}')`;
+    // Fecha de creación/edición
+    const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
+    backDiv.innerHTML = `
         <div id="publicacion">Publicado: ${fecha}</div>
         <div id="autor">${book.author || 'Autor desconocido'}</div>
     `;
-                    pagesDiv.appendChild(backDiv);
+    pagesDiv.appendChild(backDiv);
 
-                    bookDiv.appendChild(pagesDiv);
-                    readerContainer.appendChild(bookDiv);
+    bookDiv.appendChild(pagesDiv);
+    readerContainer.appendChild(bookDiv);
+
+    // Aplicar lógica de flipbook
+    setTimeout(() => {
+        const pages = bookDiv.getElementsByClassName('page');
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            if (i % 2 === 0) {
+                page.classList.add('even');
+            } else {
+                page.classList.add('odd');
+            }
+        }
+        for (let i = 0; i < pages.length; i++) {
+            pages[i].pageNum = i + 1;
+            pages[i].onclick = function () {
+                this.classList.toggle('flipped');
+            };
+        }
+    }, 100);
+}
 
                     // Aplicar lógica de flipbook
                     setTimeout(() => {
@@ -196,7 +159,6 @@ const IMAGE_GALLERY = {
                         }
                     }, 100);
                 }
-            };
 
             const TEMPLATE_CATEGORIES = {
                 fantasia: {
