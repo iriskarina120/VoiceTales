@@ -1127,14 +1127,25 @@ function saveCurrentBook() {
 function displayReaderPages() {
     if (!currentBook) return;
 
+    // Flipbook solo para libros personalizados
+    if (currentBook.isTemplate === false) {
+        const readerContainer = document.getElementById('book-reader');
+        if (readerContainer) {
+            // Ocultar páginas dobles si existen
+            const leftPage = document.getElementById('page-left');
+            const rightPage = document.getElementById('page-right');
+            if (leftPage) leftPage.style.display = 'none';
+            if (rightPage) rightPage.style.display = 'none';
+            showBookFlipTemplate(currentBook);
+        }
+        return;
+    }
+
+    // Para plantillas y libros no personalizados
     const leftPage = document.getElementById('page-left');
     const rightPage = document.getElementById('page-right');
-
-    // Limpiar eventos anteriores
-    leftPage.onclick = null;
-    rightPage.onclick = null;
-
-
+    if (leftPage) leftPage.onclick = null;
+    if (rightPage) rightPage.onclick = null;
 
     if (currentPage === -1) {
         // Mostrar portada
