@@ -107,93 +107,98 @@ const IMAGE_GALLERY = {
                 pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
                 // Audio de la página (si existe)
                 if (book.pages[i]?.audio) {
-                    const audioBtn = document.createElement('button');
-                    audioBtn.textContent = '🔊 Escuchar';
-                    audioBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        const audio = new Audio(book.pages[i].audio);
-                        audio.play();
-                    };
-                    pageDiv.appendChild(audioBtn);
-                }
-                pagesDiv.appendChild(pageDiv);
-            }
+    const readerContainer = document.getElementById('book-reader');
+    if (!readerContainer) return;
 
-            // Contraportada (última página)
-            const backDiv = document.createElement('div');
-            backDiv.className = 'page';
-            backDiv.id = 'publicacion';
-            backDiv.style.backgroundImage = `url('${book.pages[book.pages.length - 1]?.background || book.pages[0]?.background || ''}')`;
-            // Fecha de creación/edición
-            const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
-            backDiv.innerHTML = `
+    // Limpiar contenido anterior
+    readerContainer.innerHTML = '';
+
+    // Ocultar páginas dobles si existen
+    const leftPage = document.getElementById('page-left');
+    const rightPage = document.getElementById('page-right');
+    if (leftPage) leftPage.style.display = 'none';
+    if (rightPage) rightPage.style.display = 'none';
+
+    // Crear contenedor principal del libro
+    const bookDiv = document.createElement('div');
+    bookDiv.className = 'book';
+
+    // Contenedor de páginas
+    const pagesDiv = document.createElement('div');
+    pagesDiv.className = 'pages';
+
+    // Portada
+    const portadaDiv = document.createElement('div');
+    portadaDiv.className = 'page';
+    portadaDiv.id = 'portada';
+    portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
+    portadaDiv.innerHTML = `
+        <div id="name">${book.title}</div>
+        <div id="title">${book.description || ''}</div>
+        <div id="autor">${book.author || 'Autor desconocido'}</div>
+    `;
+    pagesDiv.appendChild(portadaDiv);
+
+    // Páginas del libro
+    for (let i = 1; i < book.pages.length; i++) {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageDiv.id = `page${i}`;
+        pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
+        // Texto de la página
+        pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
+        // Audio de la página (si existe)
+        if (book.pages[i]?.audio) {
+            const audioBtn = document.createElement('button');
+            audioBtn.textContent = '🔊 Escuchar';
+            audioBtn.onclick = (e) => {
+                e.stopPropagation();
+                const audio = new Audio(book.pages[i].audio);
+                audio.play();
+            };
+            pageDiv.appendChild(audioBtn);
+        }
+        pagesDiv.appendChild(pageDiv);
+    }
+
+    // Contraportada (última página)
+    const backDiv = document.createElement('div');
+    backDiv.className = 'page';
+    backDiv.id = 'publicacion';
+    backDiv.style.backgroundImage = `url('${book.pages[book.pages.length - 1]?.background || book.pages[0]?.background || ''}')`;
+    // Fecha de creación/edición
+    const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
+    backDiv.innerHTML = `
         <div id="publicacion">Publicado: ${fecha}</div>
         <div id="autor">${book.author || 'Autor desconocido'}</div>
     `;
-            pagesDiv.appendChild(backDiv);
+    pagesDiv.appendChild(backDiv);
 
-            bookDiv.appendChild(pagesDiv);
-            readerContainer.appendChild(bookDiv);
+    bookDiv.appendChild(pagesDiv);
+    readerContainer.appendChild(bookDiv);
 
-            // Aplicar lógica de flipbook
-            setTimeout(() => {
-                const pages = bookDiv.getElementsByClassName('page');
-                for (let i = 0; i < pages.length; i++) {
-                    const page = pages[i];
-                    if (i % 2 === 0) {
-                        page.style.zIndex = (pages.length - i);
-                    }
-                }
-                for (let i = 0; i < pages.length; i++) {
-                    pages[i].pageNum = i + 1;
-                    pages[i].onclick = function () {
-                        if (this.pageNum % 2 === 0) {
-                            this.classList.remove('flipped');
-                            this.previousElementSibling.classList.remove('flipped');
-                        } else {
-                            this.classList.add('flipped');
-                            this.nextElementSibling.classList.add('flipped');
-                        }
-                    };
-                }
-            }, 100);
+    // Aplicar lógica de flipbook
+    setTimeout(() => {
+        const pages = bookDiv.getElementsByClassName('page');
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            if (i % 2 === 0) {
+                page.classList.add('even');
+            } else {
+                page.classList.add('odd');
+            }
         }
-        'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'
-    ]
+        for (let i = 0; i < pages.length; i++) {
+            pages[i].pageNum = i + 1;
+            pages[i].onclick = function () {
+                this.classList.toggle('flipped');
+            };
+        }
+    }, 100);
+    }
 };
 
-// Categorías de plantillas
 const TEMPLATE_CATEGORIES = {
-    aventura: {
-        name: 'Aventura',
-        icon: '🏔️',
-        templates: [
-            {
-                id: 'forest-adventure',
-                title: 'Aventura en el Bosque',
-                description: 'Una mágica aventura entre árboles gigantes y criaturas fantásticas.',
-                pages: [
-                    { background: IMAGE_GALLERY.naturaleza[0], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[1], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[2], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[3], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[4], text: '' }
-                ]
-            },
-            {
-                id: 'mountain-climb',
-                title: 'Escalada en la Montaña',
-                description: 'Sube hasta la cima más alta y descubre tesoros ocultos.',
-                pages: [
-                    { background: IMAGE_GALLERY.naturaleza[0], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[2], text: '' },
-                    { background: IMAGE_GALLERY.naturaleza[4], text: '' },
-                    { background: IMAGE_GALLERY.espacio[0], text: '' },
-                    { background: IMAGE_GALLERY.fantasia[2], text: '' }
-                ]
-            }
-        ]
-    },
     fantasia: {
         name: 'Fantasía',
         icon: '🧚‍♀️',
