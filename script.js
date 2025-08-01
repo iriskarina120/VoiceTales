@@ -66,98 +66,98 @@ const IMAGE_GALLERY = {
         'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800',
         'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
         'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1f?w=800',
-/**
- * Muestra el libro en formato flipbook usando la plantilla proporcionada.
- * Solo para libros personalizados (Mis Libros).
- */
-function showBookFlipTemplate(book) {
-    const readerContainer = document.getElementById('book-reader');
-    if (!readerContainer) return;
+        /**
+         * Muestra el libro en formato flipbook usando la plantilla proporcionada.
+         * Solo para libros personalizados (Mis Libros).
+         */
+        function showBookFlipTemplate(book) {
+            const readerContainer = document.getElementById('book-reader');
+            if (!readerContainer) return;
 
-    // Limpiar contenido anterior
-    readerContainer.innerHTML = '';
+            // Limpiar contenido anterior
+            readerContainer.innerHTML = '';
 
-    // Crear contenedor principal del libro
-    const bookDiv = document.createElement('div');
-    bookDiv.className = 'book';
+            // Crear contenedor principal del libro
+            const bookDiv = document.createElement('div');
+            bookDiv.className = 'book';
 
-    // Contenedor de páginas
-    const pagesDiv = document.createElement('div');
-    pagesDiv.className = 'pages';
+            // Contenedor de páginas
+            const pagesDiv = document.createElement('div');
+            pagesDiv.className = 'pages';
 
-    // Portada
-    const portadaDiv = document.createElement('div');
-    portadaDiv.className = 'page';
-    portadaDiv.id = 'portada';
-    portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
-    portadaDiv.innerHTML = `
+            // Portada
+            const portadaDiv = document.createElement('div');
+            portadaDiv.className = 'page';
+            portadaDiv.id = 'portada';
+            portadaDiv.style.backgroundImage = `url('${book.pages[0]?.background || ''}')`;
+            portadaDiv.innerHTML = `
         <div id="name">${book.title}</div>
         <div id="title">${book.description || ''}</div>
         <div id="autor">${book.author || 'Autor desconocido'}</div>
     `;
-    pagesDiv.appendChild(portadaDiv);
+            pagesDiv.appendChild(portadaDiv);
 
-    // Páginas del libro
-    for (let i = 1; i < book.pages.length; i++) {
-        const pageDiv = document.createElement('div');
-        pageDiv.className = 'page';
-        pageDiv.id = `page${i}`;
-        pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
-        // Texto de la página
-        pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
-        // Audio de la página (si existe)
-        if (book.pages[i]?.audio) {
-            const audioBtn = document.createElement('button');
-            audioBtn.textContent = '🔊 Escuchar';
-            audioBtn.onclick = (e) => {
-                e.stopPropagation();
-                const audio = new Audio(book.pages[i].audio);
-                audio.play();
-            };
-            pageDiv.appendChild(audioBtn);
-        }
-        pagesDiv.appendChild(pageDiv);
-    }
+            // Páginas del libro
+            for (let i = 1; i < book.pages.length; i++) {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page';
+                pageDiv.id = `page${i}`;
+                pageDiv.style.backgroundImage = `url('${book.pages[i]?.background || ''}')`;
+                // Texto de la página
+                pageDiv.innerHTML = `<div class="page-text">${book.pages[i]?.text || ''}</div>`;
+                // Audio de la página (si existe)
+                if (book.pages[i]?.audio) {
+                    const audioBtn = document.createElement('button');
+                    audioBtn.textContent = '🔊 Escuchar';
+                    audioBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        const audio = new Audio(book.pages[i].audio);
+                        audio.play();
+                    };
+                    pageDiv.appendChild(audioBtn);
+                }
+                pagesDiv.appendChild(pageDiv);
+            }
 
-    // Contraportada (última página)
-    const backDiv = document.createElement('div');
-    backDiv.className = 'page';
-    backDiv.id = 'publicacion';
-    backDiv.style.backgroundImage = `url('${book.pages[book.pages.length-1]?.background || book.pages[0]?.background || ''}')`;
-    // Fecha de creación/edición
-    const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
-    backDiv.innerHTML = `
+            // Contraportada (última página)
+            const backDiv = document.createElement('div');
+            backDiv.className = 'page';
+            backDiv.id = 'publicacion';
+            backDiv.style.backgroundImage = `url('${book.pages[book.pages.length - 1]?.background || book.pages[0]?.background || ''}')`;
+            // Fecha de creación/edición
+            const fecha = book.lastEdit || book.creationDate || (new Date()).toLocaleDateString();
+            backDiv.innerHTML = `
         <div id="publicacion">Publicado: ${fecha}</div>
         <div id="autor">${book.author || 'Autor desconocido'}</div>
     `;
-    pagesDiv.appendChild(backDiv);
+            pagesDiv.appendChild(backDiv);
 
-    bookDiv.appendChild(pagesDiv);
-    readerContainer.appendChild(bookDiv);
+            bookDiv.appendChild(pagesDiv);
+            readerContainer.appendChild(bookDiv);
 
-    // Aplicar lógica de flipbook
-    setTimeout(() => {
-        const pages = bookDiv.getElementsByClassName('page');
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-            if (i % 2 === 0) {
-                page.style.zIndex = (pages.length - i);
-            }
-        }
-        for (let i = 0; i < pages.length; i++) {
-            pages[i].pageNum = i + 1;
-            pages[i].onclick = function () {
-                if (this.pageNum % 2 === 0) {
-                    this.classList.remove('flipped');
-                    this.previousElementSibling.classList.remove('flipped');
-                } else {
-                    this.classList.add('flipped');
-                    this.nextElementSibling.classList.add('flipped');
+            // Aplicar lógica de flipbook
+            setTimeout(() => {
+                const pages = bookDiv.getElementsByClassName('page');
+                for (let i = 0; i < pages.length; i++) {
+                    const page = pages[i];
+                    if (i % 2 === 0) {
+                        page.style.zIndex = (pages.length - i);
+                    }
                 }
-            };
+                for (let i = 0; i < pages.length; i++) {
+                    pages[i].pageNum = i + 1;
+                    pages[i].onclick = function () {
+                        if (this.pageNum % 2 === 0) {
+                            this.classList.remove('flipped');
+                            this.previousElementSibling.classList.remove('flipped');
+                        } else {
+                            this.classList.add('flipped');
+                            this.nextElementSibling.classList.add('flipped');
+                        }
+                    };
+                }
+            }, 100);
         }
-    }, 100);
-}
         'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'
     ]
 };
@@ -1134,7 +1134,7 @@ function displayReaderPages() {
     leftPage.onclick = null;
     rightPage.onclick = null;
 
-    
+
 
     if (currentPage === -1) {
         // Mostrar portada
@@ -1411,15 +1411,15 @@ function addNewPage() {
         <h4>${pageLabel}</h4>
         <div class="image-selection">
             <div class="image-upload">
-                <label for="page-image-${pageCount+1}">📷 Subir imagen propia</label>
-                <input type="file" id="page-image-${pageCount+1}" accept="image/*" onchange="handleImageUpload(this, ${pageCount})">
+                <label for="page-image-${pageCount + 1}">📷 Subir imagen propia</label>
+                <input type="file" id="page-image-${pageCount + 1}" accept="image/*" onchange="handleImageUpload(this, ${pageCount})">
             </div>
             <button class="gallery-btn" onclick="showImageGallery(${pageCount})">🖼️ Galería de imágenes</button>
         </div>
-        <div class="image-preview" id="preview-${pageCount+1}" style="display: none; margin: 1rem 0;">
-            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount+1}">
+        <div class="image-preview" id="preview-${pageCount + 1}" style="display: none; margin: 1rem 0;">
+            <img style="max-width: 200px; max-height: 150px; border-radius: 10px;" id="img-${pageCount + 1}">
         </div>
-        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount+1}">
+        <div class="image-gallery-modal hidden" id="gallery-modal-${pageCount + 1}">
             <div class="gallery-content">
                 <h4>Selecciona una imagen</h4>
                 <div class="gallery-categories">
@@ -1428,14 +1428,14 @@ function addNewPage() {
                             <h5>${category.charAt(0).toUpperCase() + category.slice(1)}</h5>
                             <div class="gallery-images">
                                 ${images.map(img => `
-                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount}, ${pageCount+1})" 
+                                    <img src="${img}" onclick="selectGalleryImage('${img}', ${pageCount}, ${pageCount + 1})" 
                                          style="width: 80px; height: 60px; object-fit: cover; margin: 5px; cursor: pointer; border-radius: 5px;">
                                 `).join('')}
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <button onclick="closeImageGallery(${pageCount+1})">Cerrar</button>
+                <button onclick="closeImageGallery(${pageCount + 1})">Cerrar</button>
             </div>
         </div>
     `;
@@ -1604,16 +1604,16 @@ async function createBookVideo(book) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // Sombra libro
             ctx.fillStyle = '#bfa76f';
-            ctx.fillRect(canvas.width/2-220, 120, 440, 480);
+            ctx.fillRect(canvas.width / 2 - 220, 120, 440, 480);
             // Tapa
             ctx.fillStyle = '#f5e6c8';
-            ctx.fillRect(canvas.width/2-200, 140, 400, 440);
+            ctx.fillRect(canvas.width / 2 - 200, 140, 400, 440);
             // Imagen portada
             if (coverImg) {
                 const img = new Image();
                 await new Promise(res => {
                     img.onload = () => {
-                        ctx.drawImage(img, canvas.width/2-180, 160, 360, 220);
+                        ctx.drawImage(img, canvas.width / 2 - 180, 160, 360, 220);
                         res();
                     };
                     img.onerror = res;
@@ -1624,15 +1624,15 @@ async function createBookVideo(book) {
             ctx.font = 'bold 40px "Comic Sans MS", cursive';
             ctx.fillStyle = '#4a90e2';
             ctx.textAlign = 'center';
-            ctx.fillText(title, canvas.width/2, 410);
+            ctx.fillText(title, canvas.width / 2, 410);
             // Autor
             ctx.font = '28px "Comic Sans MS", cursive';
             ctx.fillStyle = '#666';
-            ctx.fillText('Autor: ' + (author||''), canvas.width/2, 450);
+            ctx.fillText('Autor: ' + (author || ''), canvas.width / 2, 450);
             // Descripción
             ctx.font = '22px "Comic Sans MS", cursive';
             ctx.fillStyle = '#888';
-            ctx.fillText(desc||'', canvas.width/2, 490);
+            ctx.fillText(desc || '', canvas.width / 2, 490);
             ctx.restore();
         }
 
@@ -1658,12 +1658,12 @@ async function createBookVideo(book) {
                         ctx.save();
                         ctx.beginPath();
                         ctx.moveTo(60, 60);
-                        ctx.lineTo(canvas.width/2-10, 60);
-                        ctx.lineTo(canvas.width/2-10, canvas.height-60);
-                        ctx.lineTo(60, canvas.height-60);
+                        ctx.lineTo(canvas.width / 2 - 10, 60);
+                        ctx.lineTo(canvas.width / 2 - 10, canvas.height - 60);
+                        ctx.lineTo(60, canvas.height - 60);
                         ctx.closePath();
                         ctx.clip();
-                        ctx.drawImage(imgL, 60, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.drawImage(imgL, 60, 60, canvas.width / 2 - 70, canvas.height - 120);
                         ctx.restore();
                         res();
                     };
@@ -1678,13 +1678,13 @@ async function createBookVideo(book) {
                     imgR.onload = () => {
                         ctx.save();
                         ctx.beginPath();
-                        ctx.moveTo(canvas.width/2+10, 60);
-                        ctx.lineTo(canvas.width-60, 60);
-                        ctx.lineTo(canvas.width-60, canvas.height-60);
-                        ctx.lineTo(canvas.width/2+10, canvas.height-60);
+                        ctx.moveTo(canvas.width / 2 + 10, 60);
+                        ctx.lineTo(canvas.width - 60, 60);
+                        ctx.lineTo(canvas.width - 60, canvas.height - 60);
+                        ctx.lineTo(canvas.width / 2 + 10, canvas.height - 60);
                         ctx.closePath();
                         ctx.clip();
-                        ctx.drawImage(imgR, canvas.width/2+10, 60, canvas.width/2-70, canvas.height-120);
+                        ctx.drawImage(imgR, canvas.width / 2 + 10, 60, canvas.width / 2 - 70, canvas.height - 120);
                         ctx.restore();
                         res();
                     };
@@ -1700,16 +1700,16 @@ async function createBookVideo(book) {
                 ctx.textAlign = 'center';
                 ctx.shadowColor = '#fff';
                 ctx.shadowBlur = 4;
-                const x = canvas.width/4;
+                const x = canvas.width / 4;
                 const y = canvas.height - 120;
-                const maxWidth = canvas.width/2-100;
-                let words = (leftText||'').split(' '), line = '', lines = [];
+                const maxWidth = canvas.width / 2 - 100;
+                let words = (leftText || '').split(' '), line = '', lines = [];
                 for (let w of words) {
                     let test = line + w + ' ';
                     if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
                 }
                 if (line) lines.push(line);
-                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + 40 * i));
                 ctx.restore();
             }
             // Texto derecha
@@ -1720,16 +1720,16 @@ async function createBookVideo(book) {
                 ctx.textAlign = 'center';
                 ctx.shadowColor = '#fff';
                 ctx.shadowBlur = 4;
-                const x = 3*canvas.width/4;
+                const x = 3 * canvas.width / 4;
                 const y = canvas.height - 120;
-                const maxWidth = canvas.width/2-100;
-                let words = (rightText||'').split(' '), line = '', lines = [];
+                const maxWidth = canvas.width / 2 - 100;
+                let words = (rightText || '').split(' '), line = '', lines = [];
                 for (let w of words) {
                     let test = line + w + ' ';
                     if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = w + ' '; } else { line = test; }
                 }
                 if (line) lines.push(line);
-                lines.forEach((l,i)=>ctx.fillText(l.trim(), x, y+40*i));
+                lines.forEach((l, i) => ctx.fillText(l.trim(), x, y + 40 * i));
                 ctx.restore();
             }
             ctx.restore();
@@ -1738,14 +1738,14 @@ async function createBookVideo(book) {
         // Animación de apertura de libro
         async function animateBookOpening(coverImg, title, author, desc) {
             // De libro cerrado a abierto (simple fade)
-            for (let t=0; t<=1; t+=0.05) {
+            for (let t = 0; t <= 1; t += 0.05) {
                 ctx.save();
                 ctx.globalAlpha = 1;
                 drawClosedBook(coverImg, title, author, desc);
                 ctx.globalAlpha = t;
-                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
-                await new Promise(r=>setTimeout(r,20));
+                await new Promise(r => setTimeout(r, 20));
             }
         }
 
@@ -1770,29 +1770,29 @@ async function createBookVideo(book) {
                 loadImg(nextLeft),
                 loadImg(nextRight)
             ]);
-            for (let s=0; s<=steps; s++) {
-                const progress = s/steps;
+            for (let s = 0; s <= steps; s++) {
+                const progress = s / steps;
                 ctx.save();
-                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 // Fondo
                 ctx.fillStyle = '#f5e6c8';
-                ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 // Páginas anteriores (izq/der) se deslizan a la izquierda
                 if (imgPrevLeft) {
-                    ctx.drawImage(imgPrevLeft, 60-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    ctx.drawImage(imgPrevLeft, 60 - progress * canvas.width / 2, 60, canvas.width / 2 - 70, canvas.height - 120);
                 }
                 if (imgPrevRight) {
-                    ctx.drawImage(imgPrevRight, canvas.width/2+10-progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    ctx.drawImage(imgPrevRight, canvas.width / 2 + 10 - progress * canvas.width / 2, 60, canvas.width / 2 - 70, canvas.height - 120);
                 }
                 // Nuevas páginas aparecen desde la derecha
                 if (imgNextLeft) {
-                    ctx.drawImage(imgNextLeft, 60+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    ctx.drawImage(imgNextLeft, 60 + progress * canvas.width / 2, 60, canvas.width / 2 - 70, canvas.height - 120);
                 }
                 if (imgNextRight) {
-                    ctx.drawImage(imgNextRight, canvas.width/2+10+progress*canvas.width/2, 60, canvas.width/2-70, canvas.height-120);
+                    ctx.drawImage(imgNextRight, canvas.width / 2 + 10 + progress * canvas.width / 2, 60, canvas.width / 2 - 70, canvas.height - 120);
                 }
                 ctx.restore();
-                await new Promise(r=>setTimeout(r,20));
+                await new Promise(r => setTimeout(r, 20));
             }
         }
         const pages = [
@@ -1810,20 +1810,20 @@ async function createBookVideo(book) {
         async function renderBookPages() {
             // 1. Libro cerrado (portada)
             await drawClosedBook(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
-            await new Promise(r=>setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 1500));
 
             // 2. Animación de apertura
             await animateBookOpening(pages[0].img, pages[0].text, pages[0].author, pages[0].desc);
-            await new Promise(r=>setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 500));
 
             // 3. Portadilla (igual a portada, pero libro abierto)
             await drawOpenBook(pages[0].img, null, pages[0].text, pages[0].author);
-            await new Promise(r=>setTimeout(r, 1200));
+            await new Promise(r => setTimeout(r, 1200));
 
             // 4. Páginas dobles de la historia
             let pagePairs = [];
-            for (let i=1; i<pages.length-1; i+=2) {
-                pagePairs.push([pages[i], pages[i+1]||null]);
+            for (let i = 1; i < pages.length - 1; i += 2) {
+                pagePairs.push([pages[i], pages[i + 1] || null]);
             }
             let prevLeft = pages[0].img, prevRight = null, prevLeftText = '', prevRightText = '';
             for (let pair of pagePairs) {
@@ -1837,32 +1837,32 @@ async function createBookVideo(book) {
                     const audioL = new Audio(left.audio);
                     const audioSourceL = audioContext.createMediaElementSource(audioL);
                     audioSourceL.connect(audioDestination);
-                    await new Promise(res=>{audioL.onended=res; audioL.play().catch(()=>res());});
+                    await new Promise(res => { audioL.onended = res; audioL.play().catch(() => res()); });
                 }
                 if (right?.audio) {
                     const audioR = new Audio(right.audio);
                     const audioSourceR = audioContext.createMediaElementSource(audioR);
                     audioSourceR.connect(audioDestination);
-                    await new Promise(res=>{audioR.onended=res; audioR.play().catch(()=>res());});
+                    await new Promise(res => { audioR.onended = res; audioR.play().catch(() => res()); });
                 }
-                await new Promise(r=>setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 500));
                 prevLeft = left?.img; prevRight = right?.img; prevLeftText = left?.text; prevRightText = right?.text;
             }
 
             // 5. Cierre del libro mostrando contraportada
             // (Animación simple: fundido a libro cerrado con contraportada)
-            for (let t=0; t<=1; t+=0.05) {
+            for (let t = 0; t <= 1; t += 0.05) {
                 ctx.save();
-                ctx.globalAlpha = 1-t;
+                ctx.globalAlpha = 1 - t;
                 await drawOpenBook(prevLeft, prevRight, prevLeftText, prevRightText);
                 ctx.globalAlpha = t;
-                await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, pages[pages.length-1].desc);
+                await drawClosedBook(pages[pages.length - 1].img, pages[pages.length - 1].text, pages[pages.length - 1].author, pages[pages.length - 1].desc);
                 ctx.restore();
-                await new Promise(r=>setTimeout(r,20));
+                await new Promise(r => setTimeout(r, 20));
             }
             // Contraportada con fecha
-            await drawClosedBook(pages[pages.length-1].img, pages[pages.length-1].text, pages[pages.length-1].author, 'Última edición: '+(pages[pages.length-1].lastEdit||''));
-            await new Promise(r=>setTimeout(r, 1500));
+            await drawClosedBook(pages[pages.length - 1].img, pages[pages.length - 1].text, pages[pages.length - 1].author, 'Última edición: ' + (pages[pages.length - 1].lastEdit || ''));
+            await new Promise(r => setTimeout(r, 1500));
 
             setTimeout(() => {
                 videoRecorder.stop();
